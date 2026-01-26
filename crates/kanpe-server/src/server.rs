@@ -3,6 +3,7 @@
 use crate::broadcast::broadcast_message;
 use crate::client_manager::{ClientInfo, ClientManager};
 use crate::events::ServerEvent;
+use crate::monitor_manager::MonitorManager;
 use futures_util::{SinkExt, StreamExt};
 use kanpe_core::Message;
 use std::net::SocketAddr;
@@ -15,6 +16,7 @@ use tokio_tungstenite::{accept_async, tungstenite::Message as WsMessage};
 /// WebSocket server for Kanpe director mode
 pub struct KanpeServer {
     client_manager: Arc<ClientManager>,
+    monitor_manager: Arc<MonitorManager>,
     event_tx: mpsc::UnboundedSender<ServerEvent>,
     shutdown_tx: Option<mpsc::Sender<()>>,
 }
@@ -24,6 +26,7 @@ impl KanpeServer {
     pub fn new(event_tx: mpsc::UnboundedSender<ServerEvent>) -> Self {
         Self {
             client_manager: Arc::new(ClientManager::new()),
+            monitor_manager: Arc::new(MonitorManager::new()),
             event_tx,
             shutdown_tx: None,
         }
@@ -31,6 +34,9 @@ impl KanpeServer {
 
     /// Start the WebSocket server on the specified port
     pub async fn start(&mut self, port: u16) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        // Initialize default monitors
+        self.monitor_manager.initialize_default_monitors().await;
+
         let addr: SocketAddr = format!("0.0.0.0:{}", port).parse()?;
         let listener = TcpListener::bind(&addr).await?;
 
@@ -38,6 +44,7 @@ impl KanpeServer {
         self.shutdown_tx = Some(shutdown_tx);
 
         let client_manager = self.client_manager.clone();
+        let monitor_manager = self.monitor_manager.clone();
         let event_tx = self.event_tx.clone();
 
         tokio::spawn(async move {
@@ -45,10 +52,11 @@ impl KanpeServer {
                 tokio::select! {
                     Ok((stream, peer_addr)) = listener.accept() => {
                         let client_manager = client_manager.clone();
+                        let monitor_manager = monitor_manager.clone();
                         let event_tx = event_tx.clone();
 
                         tokio::spawn(async move {
-                            if let Err(e) = handle_connection(stream, peer_addr, client_manager, event_tx).await {
+                            if let Err(e) = handle_connection(stream, peer_addr, client_manager, monitor_manager, event_tx).await {
                                 eprintln!("Error handling connection from {}: {}", peer_addr, e);
                             }
                         });
@@ -83,6 +91,66 @@ impl KanpeServer {
     pub async fn get_connected_clients(&self) -> Vec<ClientInfo> {
         self.client_manager.get_all_clients().await
     }
+
+    /// Add a new virtual monitor
+    pub async fn add_monitor(
+        &self,
+        name: String,
+        description: Option<String>,
+        color: Option<String>,
+    ) -> Result<kanpe_core::types::VirtualMonitor, Box<dyn std::error::Error + Send + Sync>> {
+        let monitor = self.monitor_manager.add_monitor(name, description, color).await;
+
+        // Broadcast MonitorAdded message to all clients
+        let msg = Message::monitor_added(monitor.clone());
+        broadcast_message(&self.client_manager, &msg).await?;
+
+        // Emit event
+        let _ = self.event_tx.send(ServerEvent::MonitorAdded {
+            monitor: monitor.clone(),
+        });
+
+        Ok(monitor)
+    }
+
+    /// Remove a virtual monitor
+    pub async fn remove_monitor(
+        &self,
+        monitor_id: u32,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        if let Some(_monitor) = self.monitor_manager.remove_monitor(monitor_id).await {
+            // Broadcast MonitorRemoved message to all clients
+            let msg = Message::monitor_removed(monitor_id);
+            broadcast_message(&self.client_manager, &msg).await?;
+
+            // Emit event
+            let _ = self.event_tx.send(ServerEvent::MonitorRemoved { monitor_id });
+        }
+        Ok(())
+    }
+
+    /// Update a virtual monitor
+    pub async fn update_monitor(
+        &self,
+        monitor: kanpe_core::types::VirtualMonitor,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        if self.monitor_manager.update_monitor(monitor.clone()).await {
+            // Broadcast MonitorUpdated message to all clients
+            let msg = Message::monitor_updated(monitor.clone());
+            broadcast_message(&self.client_manager, &msg).await?;
+
+            // Emit event
+            let _ = self.event_tx.send(ServerEvent::MonitorUpdated {
+                monitor: monitor.clone(),
+            });
+        }
+        Ok(())
+    }
+
+    /// Get all virtual monitors
+    pub async fn get_monitors(&self) -> Vec<kanpe_core::types::VirtualMonitor> {
+        self.monitor_manager.get_all_monitors().await
+    }
 }
 
 /// Handle a single WebSocket connection
@@ -90,6 +158,7 @@ async fn handle_connection(
     stream: TcpStream,
     peer_addr: SocketAddr,
     client_manager: Arc<ClientManager>,
+    monitor_manager: Arc<MonitorManager>,
     event_tx: mpsc::UnboundedSender<ServerEvent>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let ws_stream = accept_async(stream).await?;
@@ -142,6 +211,14 @@ async fn handle_connection(
                                     assigned_client_id.clone(),
                                 );
                                 if let Ok(json) = serde_json::to_string(&welcome) {
+                                    let mut sink_guard = sink.write().await;
+                                    let _ = sink_guard.send(WsMessage::Text(json)).await;
+                                }
+
+                                // Send MonitorListSync
+                                let monitors = monitor_manager.get_all_monitors().await;
+                                let monitor_sync = Message::monitor_list_sync(monitors);
+                                if let Ok(json) = serde_json::to_string(&monitor_sync) {
                                     let mut sink_guard = sink.write().await;
                                     let _ = sink_guard.send(WsMessage::Text(json)).await;
                                 }

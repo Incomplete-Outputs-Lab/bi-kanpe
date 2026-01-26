@@ -84,6 +84,26 @@ impl KanpeClient {
                                             Message::KanpeMessage { .. } => {
                                                 let _ = event_tx.send(ClientEvent::MessageReceived { message });
                                             }
+                                            Message::MonitorListSync { payload, .. } => {
+                                                let _ = event_tx.send(ClientEvent::MonitorListReceived {
+                                                    monitors: payload.monitors,
+                                                });
+                                            }
+                                            Message::MonitorAdded { payload, .. } => {
+                                                let _ = event_tx.send(ClientEvent::MonitorAdded {
+                                                    monitor: payload.monitor,
+                                                });
+                                            }
+                                            Message::MonitorRemoved { payload, .. } => {
+                                                let _ = event_tx.send(ClientEvent::MonitorRemoved {
+                                                    monitor_id: payload.monitor_id,
+                                                });
+                                            }
+                                            Message::MonitorUpdated { payload, .. } => {
+                                                let _ = event_tx.send(ClientEvent::MonitorUpdated {
+                                                    monitor: payload.monitor,
+                                                });
+                                            }
                                             Message::Ping { .. } => {
                                                 // Respond with pong
                                                 let pong = Message::pong();

@@ -67,3 +67,10 @@ export interface ConnectedClientInfo {
   name: string;
   monitor_ids: number[];
 }
+
+export interface VirtualMonitor {
+  id: number;
+  name: string;
+  description?: string;
+  color?: string;
+}

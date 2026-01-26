@@ -43,6 +43,19 @@ pub fn timestamp() -> i64 {
     chrono::Utc::now().timestamp_millis()
 }
 
+/// Virtual monitor definition
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VirtualMonitor {
+    /// Unique monitor ID
+    pub id: u32,
+    /// Display name for the monitor
+    pub name: String,
+    /// Optional description
+    pub description: Option<String>,
+    /// Optional color in hex format (e.g., "#FF5733")
+    pub color: Option<String>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

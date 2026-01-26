@@ -14,9 +14,13 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
   const [targetMonitorIds, setTargetMonitorIds] = useState<number[]>([0]);
   const [priority, setPriority] = useState<Priority>("normal");
   const [error, setError] = useState<string | null>(null);
-  const [availableMonitorIds, _setAvailableMonitorIds] = useState<number[]>([
-    0, 1, 2, 3, 4,
-  ]);
+  const [showMonitorManagement, setShowMonitorManagement] = useState<boolean>(false);
+  const [newMonitorName, setNewMonitorName] = useState<string>("");
+  const [newMonitorDescription, setNewMonitorDescription] = useState<string>("");
+  const [newMonitorColor, setNewMonitorColor] = useState<string>("#667eea");
+
+  // Get monitors from server state
+  const availableMonitors = serverState.monitors;
 
   const handleStartServer = async () => {
     try {
@@ -73,6 +77,38 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
 
   const formatTimestamp = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString();
+  };
+
+  const handleAddMonitor = async () => {
+    if (!newMonitorName.trim()) {
+      setError("Monitor name cannot be empty");
+      return;
+    }
+
+    try {
+      setError(null);
+      await invoke("add_virtual_monitor", {
+        name: newMonitorName,
+        description: newMonitorDescription || null,
+        color: newMonitorColor || null,
+      });
+      setNewMonitorName("");
+      setNewMonitorDescription("");
+      setNewMonitorColor("#667eea");
+    } catch (err) {
+      setError(String(err));
+    }
+  };
+
+  const handleRemoveMonitor = async (monitorId: number) => {
+    try {
+      setError(null);
+      await invoke("remove_virtual_monitor", { monitorId });
+      // Remove from target if selected
+      setTargetMonitorIds((prev) => prev.filter((id) => id !== monitorId));
+    } catch (err) {
+      setError(String(err));
+    }
   };
 
   return (
@@ -149,25 +185,152 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                 </span>
                 {" - "}ポート <strong style={{ fontSize: "1.1rem", color: "#1f2937" }}>{serverState.port}</strong>
               </p>
-              <button
-                onClick={handleStopServer}
-                style={{
-                  padding: "0.5rem 1.5rem",
-                  fontSize: "1rem",
-                  fontWeight: "600",
-                  backgroundColor: "#ef4444",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  width: "fit-content",
-                }}
-              >
-                ⏹ サーバー停止
-              </button>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  onClick={handleStopServer}
+                  style={{
+                    padding: "0.5rem 1.5rem",
+                    fontSize: "1rem",
+                    fontWeight: "600",
+                    backgroundColor: "#ef4444",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                >
+                  ⏹ サーバー停止
+                </button>
+                <button
+                  onClick={() => setShowMonitorManagement(!showMonitorManagement)}
+                  style={{
+                    padding: "0.5rem 1.5rem",
+                    fontSize: "1rem",
+                    fontWeight: "600",
+                    backgroundColor: "#8b5cf6",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                >
+                  📺 モニター管理
+                </button>
+              </div>
             </div>
           )}
         </div>
+
+        {/* Monitor Management Panel */}
+        {serverState.isRunning && showMonitorManagement && (
+          <div
+            style={{
+              border: "1px solid #ccc",
+              padding: "1rem",
+              borderRadius: "8px",
+              backgroundColor: "white",
+            }}
+          >
+            <h3 style={{ marginTop: 0, color: "#000" }}>モニター管理</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              {/* Add Monitor Form */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <input
+                    type="text"
+                    value={newMonitorName}
+                    onChange={(e) => setNewMonitorName(e.target.value)}
+                    placeholder="モニター名"
+                    style={{
+                      flex: 1,
+                      padding: "0.5rem",
+                      borderRadius: "4px",
+                      border: "1px solid #ccc",
+                    }}
+                  />
+                  <input
+                    type="text"
+                    value={newMonitorDescription}
+                    onChange={(e) => setNewMonitorDescription(e.target.value)}
+                    placeholder="説明（任意）"
+                    style={{
+                      flex: 1,
+                      padding: "0.5rem",
+                      borderRadius: "4px",
+                      border: "1px solid #ccc",
+                    }}
+                  />
+                  <input
+                    type="color"
+                    value={newMonitorColor}
+                    onChange={(e) => setNewMonitorColor(e.target.value)}
+                    style={{
+                      width: "60px",
+                      padding: "0.25rem",
+                      borderRadius: "4px",
+                      border: "1px solid #ccc",
+                      cursor: "pointer",
+                    }}
+                  />
+                  <button
+                    onClick={handleAddMonitor}
+                    style={{
+                      padding: "0.5rem 1rem",
+                      fontSize: "0.9rem",
+                      fontWeight: "600",
+                      backgroundColor: "#22c55e",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    追加
+                  </button>
+                </div>
+              </div>
+
+              {/* Monitor List */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "200px", overflowY: "auto" }}>
+                {availableMonitors.map((monitor) => (
+                  <div
+                    key={monitor.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      padding: "0.5rem",
+                      borderRadius: "4px",
+                      backgroundColor: "#f9f9f9",
+                      borderLeft: monitor.color ? `4px solid ${monitor.color}` : "none",
+                    }}
+                  >
+                    <span style={{ flex: 1, fontWeight: "600" }}>{monitor.name}</span>
+                    {monitor.description && (
+                      <span style={{ flex: 1, fontSize: "0.85rem", color: "#666" }}>
+                        {monitor.description}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => handleRemoveMonitor(monitor.id)}
+                      style={{
+                        padding: "0.25rem 0.75rem",
+                        fontSize: "0.85rem",
+                        backgroundColor: "#ef4444",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "3px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      削除
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Message Input */}
         {serverState.isRunning && (
@@ -222,7 +385,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
                     gap: "0.5rem",
                     padding: "0.75rem",
                     backgroundColor: "white",
@@ -230,9 +393,36 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                     border: "1px solid #ddd",
                   }}
                 >
-                  {availableMonitorIds.map((id) => (
+                  {/* All monitors option */}
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      padding: "0.5rem",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      backgroundColor: targetMonitorIds.includes(0)
+                        ? "#667eea"
+                        : "#f5f5f5",
+                      color: targetMonitorIds.includes(0) ? "white" : "#333",
+                      transition: "all 0.2s ease",
+                      fontWeight: targetMonitorIds.includes(0) ? "600" : "normal",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={targetMonitorIds.includes(0)}
+                      onChange={() => toggleMonitorId(0)}
+                      style={{ cursor: "pointer" }}
+                    />
+                    すべて
+                  </label>
+
+                  {/* Individual monitors */}
+                  {availableMonitors.map((monitor) => (
                     <label
-                      key={id}
+                      key={monitor.id}
                       style={{
                         display: "flex",
                         alignItems: "center",
@@ -240,21 +430,24 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                         padding: "0.5rem",
                         borderRadius: "4px",
                         cursor: "pointer",
-                        backgroundColor: targetMonitorIds.includes(id)
+                        backgroundColor: targetMonitorIds.includes(monitor.id)
                           ? "#667eea"
                           : "#f5f5f5",
-                        color: targetMonitorIds.includes(id) ? "white" : "#333",
+                        color: targetMonitorIds.includes(monitor.id) ? "white" : "#333",
                         transition: "all 0.2s ease",
-                        fontWeight: targetMonitorIds.includes(id) ? "600" : "normal",
+                        fontWeight: targetMonitorIds.includes(monitor.id) ? "600" : "normal",
+                        borderLeft: monitor.color && !targetMonitorIds.includes(monitor.id)
+                          ? `4px solid ${monitor.color}`
+                          : "none",
                       }}
                     >
                       <input
                         type="checkbox"
-                        checked={targetMonitorIds.includes(id)}
-                        onChange={() => toggleMonitorId(id)}
+                        checked={targetMonitorIds.includes(monitor.id)}
+                        onChange={() => toggleMonitorId(monitor.id)}
                         style={{ cursor: "pointer" }}
                       />
-                      {id === 0 ? "すべて" : `モニター${id}`}
+                      {monitor.name}
                     </label>
                   ))}
                 </div>

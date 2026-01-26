@@ -25,5 +25,17 @@ pub mod events {
         ServerWelcomeReceived {
             server_name: String,
         },
+        MonitorListReceived {
+            monitors: Vec<kanpe_core::types::VirtualMonitor>,
+        },
+        MonitorAdded {
+            monitor: kanpe_core::types::VirtualMonitor,
+        },
+        MonitorRemoved {
+            monitor_id: u32,
+        },
+        MonitorUpdated {
+            monitor: kanpe_core::types::VirtualMonitor,
+        },
     }
 }

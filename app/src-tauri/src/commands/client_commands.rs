@@ -4,7 +4,7 @@ use crate::state::{AppMode, AppState};
 use kanpe_client::events::ClientEvent;
 use kanpe_client::KanpeClient;
 use kanpe_core::{FeedbackType, Message};
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, State, Manager, WebviewUrl, WebviewWindowBuilder};
 use tokio::sync::mpsc;
 
 /// Connect to a Kanpe server
@@ -70,6 +70,21 @@ pub async fn connect_to_server(
                         }),
                     );
                 }
+                ClientEvent::MonitorListReceived { monitors } => {
+                    let _ = app_handle.emit("monitor_list_received", monitors);
+                }
+                ClientEvent::MonitorAdded { monitor } => {
+                    let _ = app_handle.emit("monitor_added", monitor);
+                }
+                ClientEvent::MonitorRemoved { monitor_id } => {
+                    let _ = app_handle.emit(
+                        "monitor_removed",
+                        serde_json::json!({ "monitor_id": monitor_id }),
+                    );
+                }
+                ClientEvent::MonitorUpdated { monitor } => {
+                    let _ = app_handle.emit("monitor_updated", monitor);
+                }
             }
         }
     });
@@ -128,5 +143,49 @@ pub async fn send_feedback(
         Ok(())
     } else {
         Err("Not connected to server".to_string())
+    }
+}
+
+/// Create a popout window for a specific monitor
+#[tauri::command]
+pub async fn create_popout_window(
+    monitor_id: u32,
+    monitor_name: String,
+    app_handle: AppHandle,
+) -> Result<(), String> {
+    let label = format!("popout-monitor-{}", monitor_id);
+    let url = format!("index.html?popout=true&monitor_id={}", monitor_id);
+    let title = format!("Monitor: {}", monitor_name);
+
+    // Check if window already exists
+    if app_handle.get_webview_window(&label).is_some() {
+        return Err(format!("Window for monitor {} already exists", monitor_id));
+    }
+
+    // Create new window
+    WebviewWindowBuilder::new(&app_handle, &label, WebviewUrl::App(url.into()))
+        .title(&title)
+        .inner_size(800.0, 600.0)
+        .build()
+        .map_err(|e| format!("Failed to create window: {}", e))?;
+
+    Ok(())
+}
+
+/// Close a popout window
+#[tauri::command]
+pub async fn close_popout_window(
+    monitor_id: u32,
+    app_handle: AppHandle,
+) -> Result<(), String> {
+    let label = format!("popout-monitor-{}", monitor_id);
+
+    if let Some(window) = app_handle.get_webview_window(&label) {
+        window
+            .close()
+            .map_err(|e| format!("Failed to close window: {}", e))?;
+        Ok(())
+    } else {
+        Err(format!("Window for monitor {} not found", monitor_id))
     }
 }

@@ -1,7 +1,7 @@
 //! Message types for the Kanpe protocol
 
 use serde::{Deserialize, Serialize};
-use crate::types::{new_id, timestamp, Priority, FeedbackType};
+use crate::types::{new_id, timestamp, Priority, FeedbackType, VirtualMonitor};
 
 /// Main message enum for all Kanpe protocol messages
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,6 +40,30 @@ pub enum Message {
     Pong {
         id: String,
         timestamp: i64,
+    },
+    /// Server sends monitor list synchronization
+    MonitorListSync {
+        id: String,
+        timestamp: i64,
+        payload: MonitorListSyncPayload,
+    },
+    /// Server notifies monitor was added
+    MonitorAdded {
+        id: String,
+        timestamp: i64,
+        payload: MonitorAddedPayload,
+    },
+    /// Server notifies monitor was removed
+    MonitorRemoved {
+        id: String,
+        timestamp: i64,
+        payload: MonitorRemovedPayload,
+    },
+    /// Server notifies monitor was updated
+    MonitorUpdated {
+        id: String,
+        timestamp: i64,
+        payload: MonitorUpdatedPayload,
     },
 }
 
@@ -83,6 +107,34 @@ pub struct FeedbackMessagePayload {
     pub reply_to_message_id: Option<String>,
     /// Type of feedback
     pub feedback_type: FeedbackType,
+}
+
+/// Payload for MonitorListSync message
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MonitorListSyncPayload {
+    /// List of all available monitors
+    pub monitors: Vec<VirtualMonitor>,
+}
+
+/// Payload for MonitorAdded message
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MonitorAddedPayload {
+    /// The newly added monitor
+    pub monitor: VirtualMonitor,
+}
+
+/// Payload for MonitorRemoved message
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MonitorRemovedPayload {
+    /// ID of the removed monitor
+    pub monitor_id: u32,
+}
+
+/// Payload for MonitorUpdated message
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MonitorUpdatedPayload {
+    /// The updated monitor
+    pub monitor: VirtualMonitor,
 }
 
 impl Message {
@@ -162,6 +214,42 @@ impl Message {
         }
     }
 
+    /// Create a new MonitorListSync message
+    pub fn monitor_list_sync(monitors: Vec<VirtualMonitor>) -> Self {
+        Message::MonitorListSync {
+            id: new_id(),
+            timestamp: timestamp(),
+            payload: MonitorListSyncPayload { monitors },
+        }
+    }
+
+    /// Create a new MonitorAdded message
+    pub fn monitor_added(monitor: VirtualMonitor) -> Self {
+        Message::MonitorAdded {
+            id: new_id(),
+            timestamp: timestamp(),
+            payload: MonitorAddedPayload { monitor },
+        }
+    }
+
+    /// Create a new MonitorRemoved message
+    pub fn monitor_removed(monitor_id: u32) -> Self {
+        Message::MonitorRemoved {
+            id: new_id(),
+            timestamp: timestamp(),
+            payload: MonitorRemovedPayload { monitor_id },
+        }
+    }
+
+    /// Create a new MonitorUpdated message
+    pub fn monitor_updated(monitor: VirtualMonitor) -> Self {
+        Message::MonitorUpdated {
+            id: new_id(),
+            timestamp: timestamp(),
+            payload: MonitorUpdatedPayload { monitor },
+        }
+    }
+
     /// Get the message ID
     pub fn id(&self) -> &str {
         match self {
@@ -171,6 +259,10 @@ impl Message {
             Message::FeedbackMessage { id, .. } => id,
             Message::Ping { id, .. } => id,
             Message::Pong { id, .. } => id,
+            Message::MonitorListSync { id, .. } => id,
+            Message::MonitorAdded { id, .. } => id,
+            Message::MonitorRemoved { id, .. } => id,
+            Message::MonitorUpdated { id, .. } => id,
         }
     }
 
@@ -183,6 +275,10 @@ impl Message {
             Message::FeedbackMessage { timestamp, .. } => *timestamp,
             Message::Ping { timestamp, .. } => *timestamp,
             Message::Pong { timestamp, .. } => *timestamp,
+            Message::MonitorListSync { timestamp, .. } => *timestamp,
+            Message::MonitorAdded { timestamp, .. } => *timestamp,
+            Message::MonitorRemoved { timestamp, .. } => *timestamp,
+            Message::MonitorUpdated { timestamp, .. } => *timestamp,
         }
     }
 }

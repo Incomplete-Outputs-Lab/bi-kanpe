@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import type { Message } from "../types/messages";
+import type { Message, VirtualMonitor } from "../types/messages";
 
 export interface ClientState {
   isConnected: boolean;
@@ -8,6 +8,7 @@ export interface ClientState {
   serverName: string | null;
   messages: Message[];
   displayMonitorIds: number[];
+  availableMonitors: VirtualMonitor[];
 }
 
 export function useClientState(displayMonitorIds: number[] = []) {
@@ -17,6 +18,7 @@ export function useClientState(displayMonitorIds: number[] = []) {
     serverName: null,
     messages: [],
     displayMonitorIds,
+    availableMonitors: [],
   });
 
   useEffect(() => {
@@ -83,12 +85,64 @@ export function useClientState(displayMonitorIds: number[] = []) {
       }
     );
 
+    // Listen for monitor_list_received event
+    const unlistenMonitorList = listen<VirtualMonitor[]>(
+      "monitor_list_received",
+      (event) => {
+        setState((prev) => ({
+          ...prev,
+          availableMonitors: event.payload,
+        }));
+      }
+    );
+
+    // Listen for monitor_added event
+    const unlistenMonitorAdded = listen<VirtualMonitor>(
+      "monitor_added",
+      (event) => {
+        setState((prev) => ({
+          ...prev,
+          availableMonitors: [...prev.availableMonitors, event.payload],
+        }));
+      }
+    );
+
+    // Listen for monitor_removed event
+    const unlistenMonitorRemoved = listen<{ monitor_id: number }>(
+      "monitor_removed",
+      (event) => {
+        setState((prev) => ({
+          ...prev,
+          availableMonitors: prev.availableMonitors.filter(
+            (m) => m.id !== event.payload.monitor_id
+          ),
+        }));
+      }
+    );
+
+    // Listen for monitor_updated event
+    const unlistenMonitorUpdated = listen<VirtualMonitor>(
+      "monitor_updated",
+      (event) => {
+        setState((prev) => ({
+          ...prev,
+          availableMonitors: prev.availableMonitors.map((m) =>
+            m.id === event.payload.id ? event.payload : m
+          ),
+        }));
+      }
+    );
+
     // Cleanup listeners on unmount
     return () => {
       unlistenConnected.then((fn) => fn());
       unlistenDisconnected.then((fn) => fn());
       unlistenWelcome.then((fn) => fn());
       unlistenMessage.then((fn) => fn());
+      unlistenMonitorList.then((fn) => fn());
+      unlistenMonitorAdded.then((fn) => fn());
+      unlistenMonitorRemoved.then((fn) => fn());
+      unlistenMonitorUpdated.then((fn) => fn());
     };
   }, [displayMonitorIds]);
 

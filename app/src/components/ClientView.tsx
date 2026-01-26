@@ -13,10 +13,12 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
   const [displayMonitorIds, setDisplayMonitorIds] = useState<number[]>([1]);
   const [error, setError] = useState<string | null>(null);
   const [selectedMonitorId, setSelectedMonitorId] = useState<number>(1);
-  const [availableMonitorIds] = useState<number[]>([1, 2, 3, 4]);
   const [showConnectionPanel, setShowConnectionPanel] = useState<boolean>(true);
 
   const clientState = useClientState(displayMonitorIds);
+
+  // Get available monitor IDs from server
+  const availableMonitors = clientState.availableMonitors;
 
   // Get the most recent message
   const currentMessage = clientState.messages[clientState.messages.length - 1];
@@ -88,6 +90,17 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
         return [...prev, id];
       }
     });
+  };
+
+  const handlePopoutMonitor = async (monitorId: number, monitorName: string) => {
+    try {
+      await invoke("create_popout_window", {
+        monitorId,
+        monitorName,
+      });
+    } catch (err) {
+      setError(String(err));
+    }
   };
 
   const getPriorityColor = (priority: string) => {
@@ -198,41 +211,64 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(4, 1fr)",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
                   gap: "0.5rem",
                 }}
               >
-                {availableMonitorIds.map((id) => (
-                  <label
-                    key={id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                      padding: "0.75rem",
-                      borderRadius: "4px",
-                      cursor: clientState.isConnected ? "not-allowed" : "pointer",
-                      backgroundColor: displayMonitorIds.includes(id)
-                        ? "#764ba2"
-                        : "#f5f5f5",
-                      color: displayMonitorIds.includes(id) ? "white" : "#333",
-                      fontWeight: displayMonitorIds.includes(id) ? "600" : "normal",
-                      transition: "all 0.2s ease",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={displayMonitorIds.includes(id)}
-                      onChange={() => toggleMonitorId(id)}
-                      disabled={clientState.isConnected}
-                      style={{ cursor: clientState.isConnected ? "not-allowed" : "pointer" }}
-                    />
-                    モニター {id}
-                  </label>
-                ))}
+                {availableMonitors.length > 0 ? (
+                  availableMonitors.map((monitor) => (
+                    <div
+                      key={monitor.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                        padding: "0.75rem",
+                        borderRadius: "4px",
+                        backgroundColor: displayMonitorIds.includes(monitor.id)
+                          ? "#764ba2"
+                          : "#f5f5f5",
+                        color: displayMonitorIds.includes(monitor.id) ? "white" : "#333",
+                        fontWeight: displayMonitorIds.includes(monitor.id) ? "600" : "normal",
+                        transition: "all 0.2s ease",
+                        borderLeft: monitor.color ? `4px solid ${monitor.color}` : "none",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={displayMonitorIds.includes(monitor.id)}
+                        onChange={() => toggleMonitorId(monitor.id)}
+                        disabled={clientState.isConnected}
+                        style={{ cursor: clientState.isConnected ? "not-allowed" : "pointer" }}
+                      />
+                      <span style={{ flex: 1 }}>{monitor.name}</span>
+                      {clientState.isConnected && (
+                        <button
+                          onClick={() => handlePopoutMonitor(monitor.id, monitor.name)}
+                          style={{
+                            padding: "0.25rem 0.5rem",
+                            fontSize: "0.75rem",
+                            backgroundColor: "#667eea",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "3px",
+                            cursor: "pointer",
+                          }}
+                          title="ポップアウト"
+                        >
+                          🗗
+                        </button>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ padding: "1rem", color: "#999", textAlign: "center" }}>
+                    サーバーに接続してモニター一覧を取得してください
+                  </div>
+                )}
               </div>
               <p style={{ margin: 0, fontSize: "0.85rem", color: "#555", fontStyle: "italic" }}>
-                💡 このキャスターが表示するモニターIDを選択（複数可）
+                💡 このキャスターが表示するモニターIDを選択（複数可）。接続後は🗗ボタンで別ウィンドウに表示できます。
               </p>
             </div>
 
@@ -249,14 +285,17 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
                   cursor: "pointer",
                 }}
               >
-                {displayMonitorIds.map((id) => (
-                  <option key={id} value={id}>
-                    モニター {id}
-                  </option>
-                ))}
+                {displayMonitorIds.map((id) => {
+                  const monitor = availableMonitors.find((m) => m.id === id);
+                  return (
+                    <option key={id} value={id}>
+                      {monitor ? monitor.name : `モニター ${id}`}
+                    </option>
+                  );
+                })}
               </select>
               <p style={{ margin: 0, fontSize: "0.85rem", color: "#555", fontStyle: "italic" }}>
-                💡 フィードバックボタンを押した時の送信元モニターID
+                💡 フィードバックボタンを押した時の送信元モニターID（ポップアウトウィンドウでは自動設定）
               </p>
             </div>
 

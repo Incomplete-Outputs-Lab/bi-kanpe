@@ -3,6 +3,7 @@
 use crate::config::ConnectedClientInfo;
 use crate::state::{AppMode, AppState};
 use kanpe_core::{Message, Priority};
+use kanpe_core::types::VirtualMonitor;
 use kanpe_server::events::ServerEvent;
 use kanpe_server::KanpeServer;
 use tauri::{AppHandle, Emitter, State};
@@ -71,6 +72,18 @@ pub async fn start_server(
                 }
                 ServerEvent::FeedbackReceived { message } => {
                     let _ = app_handle.emit("feedback_received", message);
+                }
+                ServerEvent::MonitorAdded { monitor } => {
+                    let _ = app_handle.emit("monitor_added", monitor);
+                }
+                ServerEvent::MonitorRemoved { monitor_id } => {
+                    let _ = app_handle.emit(
+                        "monitor_removed",
+                        serde_json::json!({ "monitor_id": monitor_id }),
+                    );
+                }
+                ServerEvent::MonitorUpdated { monitor } => {
+                    let _ = app_handle.emit("monitor_updated", monitor);
                 }
             }
         }
@@ -150,6 +163,70 @@ pub async fn get_connected_clients(
                 monitor_ids: c.display_monitor_ids,
             })
             .collect())
+    } else {
+        Err("Server not running".to_string())
+    }
+}
+
+/// Add a new virtual monitor
+#[tauri::command]
+pub async fn add_virtual_monitor(
+    name: String,
+    description: Option<String>,
+    color: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<VirtualMonitor, String> {
+    let server = state.server.read().await;
+    if let Some(server) = server.as_ref() {
+        server
+            .add_monitor(name, description, color)
+            .await
+            .map_err(|e| format!("Failed to add monitor: {}", e))
+    } else {
+        Err("Server not running".to_string())
+    }
+}
+
+/// Remove a virtual monitor
+#[tauri::command]
+pub async fn remove_virtual_monitor(
+    monitor_id: u32,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let server = state.server.read().await;
+    if let Some(server) = server.as_ref() {
+        server
+            .remove_monitor(monitor_id)
+            .await
+            .map_err(|e| format!("Failed to remove monitor: {}", e))
+    } else {
+        Err("Server not running".to_string())
+    }
+}
+
+/// Update a virtual monitor
+#[tauri::command]
+pub async fn update_virtual_monitor(
+    monitor: VirtualMonitor,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let server = state.server.read().await;
+    if let Some(server) = server.as_ref() {
+        server
+            .update_monitor(monitor)
+            .await
+            .map_err(|e| format!("Failed to update monitor: {}", e))
+    } else {
+        Err("Server not running".to_string())
+    }
+}
+
+/// Get all virtual monitors
+#[tauri::command]
+pub async fn get_virtual_monitors(state: State<'_, AppState>) -> Result<Vec<VirtualMonitor>, String> {
+    let server = state.server.read().await;
+    if let Some(server) = server.as_ref() {
+        Ok(server.get_monitors().await)
     } else {
         Err("Server not running".to_string())
     }

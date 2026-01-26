@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import type { ConnectedClientInfo, Message } from "../types/messages";
+import type { ConnectedClientInfo, Message, VirtualMonitor } from "../types/messages";
 
 export interface ServerState {
   isRunning: boolean;
   port: number | null;
   clients: ConnectedClientInfo[];
   feedbackMessages: Message[];
+  monitors: VirtualMonitor[];
 }
 
 export function useServerState() {
@@ -15,6 +16,7 @@ export function useServerState() {
     port: null,
     clients: [],
     feedbackMessages: [],
+    monitors: [],
   });
 
   useEffect(() => {
@@ -37,6 +39,7 @@ export function useServerState() {
         port: null,
         clients: [],
         feedbackMessages: [],
+        monitors: [],
       });
     });
 
@@ -72,6 +75,43 @@ export function useServerState() {
       }));
     });
 
+    // Listen for monitor_added event
+    const unlistenMonitorAdded = listen<VirtualMonitor>(
+      "monitor_added",
+      (event) => {
+        setState((prev) => ({
+          ...prev,
+          monitors: [...prev.monitors, event.payload],
+        }));
+      }
+    );
+
+    // Listen for monitor_removed event
+    const unlistenMonitorRemoved = listen<{ monitor_id: number }>(
+      "monitor_removed",
+      (event) => {
+        setState((prev) => ({
+          ...prev,
+          monitors: prev.monitors.filter(
+            (m) => m.id !== event.payload.monitor_id
+          ),
+        }));
+      }
+    );
+
+    // Listen for monitor_updated event
+    const unlistenMonitorUpdated = listen<VirtualMonitor>(
+      "monitor_updated",
+      (event) => {
+        setState((prev) => ({
+          ...prev,
+          monitors: prev.monitors.map((m) =>
+            m.id === event.payload.id ? event.payload : m
+          ),
+        }));
+      }
+    );
+
     // Cleanup listeners on unmount
     return () => {
       unlistenServerStarted.then((fn) => fn());
@@ -79,6 +119,9 @@ export function useServerState() {
       unlistenClientConnected.then((fn) => fn());
       unlistenClientDisconnected.then((fn) => fn());
       unlistenFeedback.then((fn) => fn());
+      unlistenMonitorAdded.then((fn) => fn());
+      unlistenMonitorRemoved.then((fn) => fn());
+      unlistenMonitorUpdated.then((fn) => fn());
     };
   }, []);
 

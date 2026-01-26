@@ -15,10 +15,16 @@ pub fn run() {
             commands::stop_server,
             commands::send_kanpe_message,
             commands::get_connected_clients,
+            commands::add_virtual_monitor,
+            commands::remove_virtual_monitor,
+            commands::update_virtual_monitor,
+            commands::get_virtual_monitors,
             // Client commands
             commands::connect_to_server,
             commands::disconnect_from_server,
             commands::send_feedback,
+            commands::create_popout_window,
+            commands::close_popout_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

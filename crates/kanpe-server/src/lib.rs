@@ -6,8 +6,10 @@
 mod server;
 mod client_manager;
 mod broadcast;
+mod monitor_manager;
 
 pub use server::KanpeServer;
+pub use monitor_manager::MonitorManager;
 
 // Re-export events for integration
 pub mod events {
@@ -25,6 +27,15 @@ pub mod events {
         },
         FeedbackReceived {
             message: kanpe_core::Message,
+        },
+        MonitorAdded {
+            monitor: kanpe_core::types::VirtualMonitor,
+        },
+        MonitorRemoved {
+            monitor_id: u32,
+        },
+        MonitorUpdated {
+            monitor: kanpe_core::types::VirtualMonitor,
         },
     }
 }
