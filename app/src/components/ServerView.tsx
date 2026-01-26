@@ -147,7 +147,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                 <span style={{ color: "#22c55e", fontWeight: "600", fontSize: "1.1rem" }}>
                   ● 起動中
                 </span>
-                {" - "}ポート <strong style={{ fontSize: "1.1rem" }}>{serverState.port}</strong>
+                {" - "}ポート <strong style={{ fontSize: "1.1rem", color: "#1f2937" }}>{serverState.port}</strong>
               </p>
               <button
                 onClick={handleStopServer}
@@ -396,13 +396,13 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                       marginBottom: "0.5rem",
                       border: "1px solid #ddd",
                       borderRadius: "6px",
-                      backgroundColor: "#f9f9f9",
+                      backgroundColor: "#ffffff",
                     }}
                   >
-                    <div style={{ fontWeight: "600", fontSize: "1rem", marginBottom: "0.25rem" }}>
+                    <div style={{ fontWeight: "600", fontSize: "1rem", marginBottom: "0.25rem", color: "#1f2937" }}>
                       {client.name}
                     </div>
-                    <div style={{ fontSize: "0.85rem", color: "#555" }}>
+                    <div style={{ fontSize: "0.85rem", color: "#374151" }}>
                       担当モニター: {client.monitor_ids.map(id => `#${id}`).join(", ")}
                     </div>
                   </li>
@@ -459,21 +459,21 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                             padding: "0.75rem",
                             border: "1px solid #ddd",
                             borderRadius: "6px",
-                            backgroundColor: "#f9f9f9",
+                            backgroundColor: "#ffffff",
                           }}
                         >
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
                             <strong style={{ color: "#667eea" }}>
                               モニター {msg.payload.source_monitor_id}
                             </strong>
-                            <span style={{ fontSize: "0.8em", color: "#555" }}>
+                            <span style={{ fontSize: "0.8em", color: "#6b7280" }}>
                               {formatTimestamp(msg.timestamp)}
                             </span>
                           </div>
-                          <div style={{ fontSize: "1rem", marginBottom: "0.25rem" }}>
+                          <div style={{ fontSize: "1rem", marginBottom: "0.25rem", color: "#1f2937" }}>
                             {msg.payload.content}
                           </div>
-                          <div style={{ fontSize: "0.85em", color: "#555" }}>
+                          <div style={{ fontSize: "0.85em", color: "#374151" }}>
                             {feedbackTypeEmoji} {msg.payload.feedback_type}
                           </div>
                         </div>

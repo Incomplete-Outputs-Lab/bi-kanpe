@@ -50,6 +50,19 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
     }
   };
 
+  const handleBackToMenu = () => {
+    if (clientState.isConnected) {
+      const confirmed = window.confirm(
+        "サーバーに接続中です。切断してメインメニューに戻りますか？"
+      );
+      if (!confirmed) {
+        return;
+      }
+      handleDisconnect();
+    }
+    onBackToMenu();
+  };
+
   const handleSendFeedback = async (
     content: string,
     feedbackType: FeedbackType
@@ -115,7 +128,7 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
               🎭 キャスターモード
             </h2>
             <button
-              onClick={onBackToMenu}
+              onClick={handleBackToMenu}
               style={{
                 padding: "0.5rem 1rem",
                 fontSize: "0.95rem",
