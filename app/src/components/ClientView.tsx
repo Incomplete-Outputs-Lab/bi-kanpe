@@ -326,7 +326,10 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
                       fontSize: "1.1rem",
                     }}
                   >
-                    ● 接続中: {clientState.serverAddress}
+                    ● 接続中:{" "}
+                    <span style={{ color: "#1f2937", backgroundColor: "#e5e7eb", padding: "0.25rem 0.5rem", borderRadius: "4px" }}>
+                      {clientState.serverAddress}
+                    </span>
                   </span>
                   <button
                     onClick={handleDisconnect}

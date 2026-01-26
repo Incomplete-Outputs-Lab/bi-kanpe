@@ -225,108 +225,196 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
         {serverState.isRunning && showMonitorManagement && (
           <div
             style={{
-              border: "1px solid #ccc",
-              padding: "1rem",
+              border: "2px solid #8b5cf6",
+              padding: "1.5rem",
               borderRadius: "8px",
               backgroundColor: "white",
             }}
           >
-            <h3 style={{ marginTop: 0, color: "#000" }}>モニター管理</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              {/* Add Monitor Form */}
+            <h3 style={{ marginTop: 0, color: "#8b5cf6", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              📺 仮想モニター管理
+            </h3>
+
+            {/* Add Monitor Form */}
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "1rem",
+              padding: "1rem",
+              backgroundColor: "#fafafa",
+              borderRadius: "6px",
+              marginBottom: "1rem",
+            }}>
+              <h4 style={{ margin: 0, fontSize: "0.95rem", color: "#333" }}>➕ 新しいモニターを追加</h4>
+
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <input
-                    type="text"
-                    value={newMonitorName}
-                    onChange={(e) => setNewMonitorName(e.target.value)}
-                    placeholder="モニター名"
-                    style={{
-                      flex: 1,
-                      padding: "0.5rem",
-                      borderRadius: "4px",
-                      border: "1px solid #ccc",
-                    }}
-                  />
-                  <input
-                    type="text"
-                    value={newMonitorDescription}
-                    onChange={(e) => setNewMonitorDescription(e.target.value)}
-                    placeholder="説明（任意）"
-                    style={{
-                      flex: 1,
-                      padding: "0.5rem",
-                      borderRadius: "4px",
-                      border: "1px solid #ccc",
-                    }}
-                  />
+                <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "#555" }}>
+                  モニター名 <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newMonitorName}
+                  onChange={(e) => setNewMonitorName(e.target.value)}
+                  placeholder="例: キャスターA、ホスト"
+                  style={{
+                    padding: "0.75rem",
+                    borderRadius: "4px",
+                    border: "1px solid #ccc",
+                    fontSize: "1rem",
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "#555" }}>
+                  説明（任意）
+                </label>
+                <input
+                  type="text"
+                  value={newMonitorDescription}
+                  onChange={(e) => setNewMonitorDescription(e.target.value)}
+                  placeholder="例: メインキャスター、MCタレント"
+                  style={{
+                    padding: "0.75rem",
+                    borderRadius: "4px",
+                    border: "1px solid #ccc",
+                    fontSize: "1rem",
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", flex: "0 0 auto" }}>
+                  <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "#555" }}>
+                    識別色
+                  </label>
                   <input
                     type="color"
                     value={newMonitorColor}
                     onChange={(e) => setNewMonitorColor(e.target.value)}
                     style={{
-                      width: "60px",
+                      width: "80px",
+                      height: "40px",
                       padding: "0.25rem",
                       borderRadius: "4px",
                       border: "1px solid #ccc",
                       cursor: "pointer",
                     }}
                   />
-                  <button
-                    onClick={handleAddMonitor}
-                    style={{
-                      padding: "0.5rem 1rem",
-                      fontSize: "0.9rem",
-                      fontWeight: "600",
-                      backgroundColor: "#22c55e",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    追加
-                  </button>
                 </div>
-              </div>
 
-              {/* Monitor List */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "200px", overflowY: "auto" }}>
-                {availableMonitors.map((monitor) => (
-                  <div
-                    key={monitor.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                      padding: "0.5rem",
-                      borderRadius: "4px",
-                      backgroundColor: "#f9f9f9",
-                      borderLeft: monitor.color ? `4px solid ${monitor.color}` : "none",
-                    }}
-                  >
-                    <span style={{ flex: 1, fontWeight: "600" }}>{monitor.name}</span>
-                    {monitor.description && (
-                      <span style={{ flex: 1, fontSize: "0.85rem", color: "#666" }}>
-                        {monitor.description}
-                      </span>
-                    )}
-                    <button
-                      onClick={() => handleRemoveMonitor(monitor.id)}
+                <button
+                  onClick={handleAddMonitor}
+                  style={{
+                    padding: "0.75rem 1.5rem",
+                    fontSize: "1rem",
+                    fontWeight: "600",
+                    backgroundColor: "#22c55e",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    flex: 1,
+                  }}
+                >
+                  ➕ モニターを追加
+                </button>
+              </div>
+            </div>
+
+            {/* Monitor List */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.95rem", color: "#333" }}>
+                登録済みモニター ({availableMonitors.length}個)
+              </h4>
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.5rem",
+                maxHeight: "250px",
+                overflowY: "auto",
+                padding: "0.5rem",
+              }}>
+                {availableMonitors.length === 0 ? (
+                  <div style={{
+                    padding: "2rem",
+                    textAlign: "center",
+                    color: "#999",
+                    fontStyle: "italic",
+                  }}>
+                    まだモニターが登録されていません
+                  </div>
+                ) : (
+                  availableMonitors.map((monitor) => (
+                    <div
+                      key={monitor.id}
                       style={{
-                        padding: "0.25rem 0.75rem",
-                        fontSize: "0.85rem",
-                        backgroundColor: "#ef4444",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "3px",
-                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "1rem",
+                        padding: "1rem",
+                        borderRadius: "6px",
+                        backgroundColor: "#ffffff",
+                        border: "2px solid #e5e7eb",
+                        borderLeft: monitor.color ? `6px solid ${monitor.color}` : "6px solid #ccc",
+                        transition: "all 0.2s ease",
                       }}
                     >
-                      削除
-                    </button>
-                  </div>
-                ))}
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          fontWeight: "700",
+                          fontSize: "1rem",
+                          color: "#1f2937",
+                          marginBottom: "0.25rem",
+                        }}>
+                          📺 {monitor.name}
+                          <span style={{
+                            marginLeft: "0.5rem",
+                            fontSize: "0.85rem",
+                            fontWeight: "500",
+                            color: "#6b7280",
+                            backgroundColor: "#f3f4f6",
+                            padding: "0.125rem 0.5rem",
+                            borderRadius: "3px",
+                          }}>
+                            ID: {monitor.id}
+                          </span>
+                        </div>
+                        {monitor.description && (
+                          <div style={{
+                            fontSize: "0.85rem",
+                            color: "#6b7280",
+                            fontStyle: "italic",
+                          }}>
+                            {monitor.description}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleRemoveMonitor(monitor.id)}
+                        style={{
+                          padding: "0.5rem 1rem",
+                          fontSize: "0.9rem",
+                          fontWeight: "600",
+                          backgroundColor: "#ef4444",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          transition: "all 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = "#dc2626";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = "#ef4444";
+                        }}
+                      >
+                        🗑 削除
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -469,9 +557,9 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                 </label>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   {[
-                    { value: "normal", label: "通常", color: "#333", bg: "#f0f0f0", desc: "通常のメッセージ" },
-                    { value: "high", label: "重要", color: "#ff8800", bg: "#ffeecc", desc: "注意が必要" },
-                    { value: "urgent", label: "緊急", color: "#ff0000", bg: "#ffcccc", desc: "即座の対応が必要" },
+                    { value: "normal", label: "通常", emoji: "📝", color: "#333", bg: "#f0f0f0", desc: "通常のメッセージ" },
+                    { value: "high", label: "重要", emoji: "⚠", color: "#ff8800", bg: "#ffeecc", desc: "注意が必要" },
+                    { value: "urgent", label: "緊急", emoji: "🚨", color: "#ff0000", bg: "#ffcccc", desc: "即座の対応が必要" },
                   ].map((p) => (
                     <button
                       key={p.value}
@@ -493,6 +581,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                       }}
                       title={p.desc}
                     >
+                      <span style={{ fontSize: "1.2rem" }}>{p.emoji}</span>
                       <span>{p.label}</span>
                       <span style={{ fontSize: "0.75rem", fontWeight: "normal", color: priority === p.value ? "inherit" : "#555" }}>
                         {p.desc}
