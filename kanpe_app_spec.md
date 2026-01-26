@@ -751,7 +751,7 @@ Response: {
       { "id": "t2", "content": "押してます", "key": "F2" },
       { "id": "t3", "content": "トラブルです", "key": "F3" }
     ],
-    "performer": [
+    "caster": [
       { "id": "f1", "content": "了解です", "key": "1" },
       { "id": "f2", "content": "お水ください", "key": "2" }
     ]

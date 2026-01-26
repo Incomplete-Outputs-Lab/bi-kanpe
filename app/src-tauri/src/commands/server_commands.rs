@@ -81,7 +81,10 @@ pub async fn start_server(
 
 /// Stop the Kanpe server
 #[tauri::command]
-pub async fn stop_server(state: State<'_, AppState>) -> Result<(), String> {
+pub async fn stop_server(
+    app_handle: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
     let mut server = state.server.write().await;
     if let Some(s) = server.take() {
         let mut s = s;
@@ -92,6 +95,11 @@ pub async fn stop_server(state: State<'_, AppState>) -> Result<(), String> {
 
     // Reset mode
     *state.mode.write().await = AppMode::NotSelected;
+
+    // Emit server_stopped event
+    app_handle
+        .emit("server_stopped", ())
+        .map_err(|e| format!("Failed to emit event: {}", e))?;
 
     Ok(())
 }

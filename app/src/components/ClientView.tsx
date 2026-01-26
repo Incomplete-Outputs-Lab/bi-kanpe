@@ -1,11 +1,15 @@
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useClientState } from "../hooks/useClientState";
-import type { FeedbackType, Message } from "../types/messages";
+import type { FeedbackType } from "../types/messages";
 
-export function ClientView() {
+interface ClientViewProps {
+  onBackToMenu: () => void;
+}
+
+export function ClientView({ onBackToMenu }: ClientViewProps) {
   const [serverAddress, setServerAddress] = useState<string>("localhost:9876");
-  const [clientName, setClientName] = useState<string>("Performer 1");
+  const [clientName, setClientName] = useState<string>("Caster 1");
   const [displayMonitorIds, setDisplayMonitorIds] = useState<number[]>([1]);
   const [error, setError] = useState<string | null>(null);
   const [selectedMonitorId, setSelectedMonitorId] = useState<number>(1);
@@ -101,51 +105,88 @@ export function ClientView() {
       {showConnectionPanel && (
         <div
           style={{
-            padding: "1rem",
-            borderBottom: "1px solid #ccc",
-            backgroundColor: "#f5f5f5",
+            padding: "1.5rem",
+            borderBottom: "2px solid #764ba2",
+            backgroundColor: "#f9f9f9",
           }}
         >
-          <h2>Performer Mode (Client)</h2>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
+            <h2 style={{ margin: 0, color: "#764ba2", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              🎭 キャスターモード
+            </h2>
+            <button
+              onClick={onBackToMenu}
+              style={{
+                padding: "0.5rem 1rem",
+                fontSize: "0.95rem",
+                fontWeight: "600",
+                backgroundColor: "#6b7280",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              ← メインメニューに戻る
+            </button>
+          </div>
           <div
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: "0.5rem",
-              maxWidth: "600px",
+              gap: "1rem",
+              maxWidth: "700px",
             }}
           >
-            <div>
-              <label>Server Address:</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              <label style={{ fontWeight: "600", color: "#000" }}>サーバーアドレス:</label>
               <input
                 type="text"
                 value={serverAddress}
                 onChange={(e) => setServerAddress(e.target.value)}
                 placeholder="localhost:9876"
-                style={{ marginLeft: "0.5rem", width: "300px" }}
+                style={{
+                  padding: "0.75rem",
+                  borderRadius: "4px",
+                  border: "1px solid #ccc",
+                  fontSize: "1rem",
+                  width: "100%",
+                }}
                 disabled={clientState.isConnected}
               />
+              <p style={{ margin: 0, fontSize: "0.85rem", color: "#555", fontStyle: "italic" }}>
+                💡 カンペが起動したサーバーのアドレスとポート番号
+              </p>
             </div>
 
-            <div>
-              <label>Client Name:</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              <label style={{ fontWeight: "600", color: "#000" }}>キャスター名:</label>
               <input
                 type="text"
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
-                placeholder="Performer 1"
-                style={{ marginLeft: "0.5rem", width: "300px" }}
+                placeholder="Caster 1"
+                style={{
+                  padding: "0.75rem",
+                  borderRadius: "4px",
+                  border: "1px solid #ccc",
+                  fontSize: "1rem",
+                  width: "100%",
+                }}
                 disabled={clientState.isConnected}
               />
+              <p style={{ margin: 0, fontSize: "0.85rem", color: "#555", fontStyle: "italic" }}>
+                💡 カンペ側に表示される識別名
+              </p>
             </div>
 
-            <div>
-              <label>Display Monitor IDs:</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              <label style={{ fontWeight: "600", color: "#000" }}>担当モニターID:</label>
               <div
                 style={{
-                  display: "flex",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, 1fr)",
                   gap: "0.5rem",
-                  marginLeft: "0.5rem",
                 }}
               >
                 {availableMonitorIds.map((id) => (
@@ -154,7 +195,16 @@ export function ClientView() {
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: "0.25rem",
+                      gap: "0.5rem",
+                      padding: "0.75rem",
+                      borderRadius: "4px",
+                      cursor: clientState.isConnected ? "not-allowed" : "pointer",
+                      backgroundColor: displayMonitorIds.includes(id)
+                        ? "#764ba2"
+                        : "#f5f5f5",
+                      color: displayMonitorIds.includes(id) ? "white" : "#333",
+                      fontWeight: displayMonitorIds.includes(id) ? "600" : "normal",
+                      transition: "all 0.2s ease",
                     }}
                   >
                     <input
@@ -162,42 +212,99 @@ export function ClientView() {
                       checked={displayMonitorIds.includes(id)}
                       onChange={() => toggleMonitorId(id)}
                       disabled={clientState.isConnected}
+                      style={{ cursor: clientState.isConnected ? "not-allowed" : "pointer" }}
                     />
-                    ID {id}
+                    モニター {id}
                   </label>
                 ))}
               </div>
+              <p style={{ margin: 0, fontSize: "0.85rem", color: "#555", fontStyle: "italic" }}>
+                💡 このキャスターが表示するモニターIDを選択（複数可）
+              </p>
             </div>
 
-            <div>
-              <label>Feedback Source Monitor:</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              <label style={{ fontWeight: "600", color: "#000" }}>フィードバック送信元モニター:</label>
               <select
                 value={selectedMonitorId}
                 onChange={(e) => setSelectedMonitorId(Number(e.target.value))}
-                style={{ marginLeft: "0.5rem" }}
+                style={{
+                  padding: "0.75rem",
+                  borderRadius: "4px",
+                  border: "1px solid #ccc",
+                  fontSize: "1rem",
+                  cursor: "pointer",
+                }}
               >
                 {displayMonitorIds.map((id) => (
                   <option key={id} value={id}>
-                    Monitor {id}
+                    モニター {id}
                   </option>
                 ))}
               </select>
+              <p style={{ margin: 0, fontSize: "0.85rem", color: "#555", fontStyle: "italic" }}>
+                💡 フィードバックボタンを押した時の送信元モニターID
+              </p>
             </div>
 
             <div style={{ marginTop: "0.5rem" }}>
               {!clientState.isConnected ? (
-                <button onClick={handleConnect}>Connect to Server</button>
+                <button
+                  onClick={handleConnect}
+                  style={{
+                    padding: "0.75rem 2rem",
+                    fontSize: "1.1rem",
+                    fontWeight: "600",
+                    backgroundColor: "#764ba2",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                  }}
+                >
+                  🔗 サーバーに接続
+                </button>
               ) : (
-                <div>
-                  <span style={{ color: "green", marginRight: "1rem" }}>
-                    Connected to {clientState.serverAddress}
+                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                  <span
+                    style={{
+                      color: "#22c55e",
+                      marginRight: "1rem",
+                      fontWeight: "600",
+                      fontSize: "1.1rem",
+                    }}
+                  >
+                    ● 接続中: {clientState.serverAddress}
                   </span>
-                  <button onClick={handleDisconnect}>Disconnect</button>
+                  <button
+                    onClick={handleDisconnect}
+                    style={{
+                      padding: "0.5rem 1.5rem",
+                      fontSize: "1rem",
+                      fontWeight: "600",
+                      backgroundColor: "#ef4444",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    切断
+                  </button>
                   <button
                     onClick={() => setShowConnectionPanel(false)}
-                    style={{ marginLeft: "0.5rem" }}
+                    style={{
+                      padding: "0.5rem 1.5rem",
+                      fontSize: "1rem",
+                      fontWeight: "600",
+                      backgroundColor: "#667eea",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                    }}
                   >
-                    Hide Panel
+                    パネルを隠す
                   </button>
                 </div>
               )}
@@ -206,13 +313,14 @@ export function ClientView() {
             {error && (
               <div
                 style={{
-                  padding: "0.5rem",
+                  padding: "0.75rem",
                   backgroundColor: "#ffcccc",
-                  border: "1px solid #ff0000",
-                  borderRadius: "4px",
+                  border: "2px solid #ff0000",
+                  borderRadius: "6px",
+                  fontWeight: "600",
                 }}
               >
-                Error: {error}
+                ❌ エラー: {error}
               </div>
             )}
           </div>
@@ -232,45 +340,70 @@ export function ClientView() {
               )
             : "#fff",
           position: "relative",
+          transition: "background-color 0.3s ease",
         }}
       >
         {!clientState.isConnected ? (
-          <div style={{ textAlign: "center", color: "#999" }}>
-            <p style={{ fontSize: "1.5rem" }}>Not connected to server</p>
-            <p>Please connect to start receiving messages</p>
+          <div style={{ textAlign: "center", color: "#555", padding: "2rem" }}>
+            <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>🔌</div>
+            <p style={{ fontSize: "1.8rem", fontWeight: "600", margin: "0 0 0.5rem 0" }}>
+              サーバー未接続
+            </p>
+            <p style={{ fontSize: "1.1rem", margin: 0 }}>
+              上部の設定パネルからカンペのサーバーに接続してください
+            </p>
           </div>
         ) : currentMessage && currentMessage.type === "kanpe_message" ? (
           <div
             style={{
               textAlign: "center",
-              padding: "2rem",
-              maxWidth: "80%",
+              padding: "3rem",
+              maxWidth: "85%",
             }}
           >
             <div
               style={{
-                fontSize: "3rem",
+                fontSize: "4rem",
                 fontWeight: "bold",
                 color: getPriorityColor(currentMessage.payload.priority),
-                marginBottom: "1rem",
+                marginBottom: "1.5rem",
                 whiteSpace: "pre-wrap",
+                lineHeight: "1.3",
+                textShadow: currentMessage.payload.priority === "urgent"
+                  ? "2px 2px 4px rgba(0,0,0,0.2)"
+                  : "none",
               }}
             >
               {currentMessage.payload.content}
             </div>
             <div
               style={{
-                fontSize: "1rem",
-                color: "#666",
+                fontSize: "1.2rem",
+                fontWeight: "600",
+                color: getPriorityColor(currentMessage.payload.priority),
+                padding: "0.5rem 1.5rem",
+                borderRadius: "20px",
+                backgroundColor: "#ffffff",
+                border: "2px solid " + getPriorityColor(currentMessage.payload.priority),
+                display: "inline-block",
               }}
             >
-              Priority: {currentMessage.payload.priority.toUpperCase()}
+              {currentMessage.payload.priority === "urgent"
+                ? "🚨 緊急"
+                : currentMessage.payload.priority === "high"
+                ? "⚠ 重要"
+                : "📝 通常"}
             </div>
           </div>
         ) : (
-          <div style={{ textAlign: "center", color: "#999" }}>
-            <p style={{ fontSize: "1.5rem" }}>Waiting for messages...</p>
-            <p>Connected to {clientState.serverName || "server"}</p>
+          <div style={{ textAlign: "center", color: "#555", padding: "2rem" }}>
+            <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>💤</div>
+            <p style={{ fontSize: "1.8rem", fontWeight: "600", margin: "0 0 0.5rem 0" }}>
+              待機中...
+            </p>
+            <p style={{ fontSize: "1.1rem", margin: 0, color: "#22c55e" }}>
+              ● {clientState.serverName || "サーバー"}に接続中
+            </p>
           </div>
         )}
 
@@ -282,10 +415,18 @@ export function ClientView() {
               position: "absolute",
               top: "1rem",
               right: "1rem",
-              padding: "0.5rem 1rem",
+              padding: "0.75rem 1.5rem",
+              fontSize: "1rem",
+              fontWeight: "600",
+              backgroundColor: "rgba(118, 75, 162, 0.9)",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
             }}
           >
-            Show Connection Panel
+            ⚙ 設定を表示
           </button>
         )}
       </div>
@@ -294,37 +435,122 @@ export function ClientView() {
       {clientState.isConnected && (
         <div
           style={{
-            padding: "1rem",
-            borderTop: "1px solid #ccc",
+            padding: "1.5rem",
+            borderTop: "2px solid #ccc",
             display: "flex",
-            gap: "0.5rem",
+            gap: "1rem",
             justifyContent: "center",
-            backgroundColor: "#f5f5f5",
+            backgroundColor: "#f9f9f9",
+            flexWrap: "wrap",
           }}
         >
           <button
-            onClick={() => handleSendFeedback("Acknowledged", "ack")}
-            style={{ padding: "0.75rem 1.5rem", fontSize: "1rem" }}
+            onClick={() => handleSendFeedback("了解しました", "ack")}
+            style={{
+              padding: "1rem 2rem",
+              fontSize: "1.1rem",
+              fontWeight: "600",
+              backgroundColor: "#22c55e",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "0.25rem",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "scale(1.05)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "scale(1)";
+            }}
           >
-            ✓ Acknowledge
+            <span style={{ fontSize: "1.5rem" }}>✓</span>
+            <span>了解</span>
           </button>
           <button
-            onClick={() => handleSendFeedback("Question", "question")}
-            style={{ padding: "0.75rem 1.5rem", fontSize: "1rem" }}
+            onClick={() => handleSendFeedback("質問があります", "question")}
+            style={{
+              padding: "1rem 2rem",
+              fontSize: "1.1rem",
+              fontWeight: "600",
+              backgroundColor: "#3b82f6",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "0.25rem",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "scale(1.05)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "scale(1)";
+            }}
           >
-            ? Question
+            <span style={{ fontSize: "1.5rem" }}>?</span>
+            <span>質問</span>
           </button>
           <button
-            onClick={() => handleSendFeedback("Issue reported", "issue")}
-            style={{ padding: "0.75rem 1.5rem", fontSize: "1rem" }}
+            onClick={() => handleSendFeedback("問題が発生しています", "issue")}
+            style={{
+              padding: "1rem 2rem",
+              fontSize: "1.1rem",
+              fontWeight: "600",
+              backgroundColor: "#f59e0b",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "0.25rem",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "scale(1.05)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "scale(1)";
+            }}
           >
-            ⚠ Issue
+            <span style={{ fontSize: "1.5rem" }}>⚠</span>
+            <span>問題報告</span>
           </button>
           <button
-            onClick={() => handleSendFeedback("Information", "info")}
-            style={{ padding: "0.75rem 1.5rem", fontSize: "1rem" }}
+            onClick={() => handleSendFeedback("情報を共有します", "info")}
+            style={{
+              padding: "1rem 2rem",
+              fontSize: "1.1rem",
+              fontWeight: "600",
+              backgroundColor: "#8b5cf6",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "0.25rem",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "scale(1.05)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "scale(1)";
+            }}
           >
-            ℹ Info
+            <span style={{ fontSize: "1.5rem" }}>ℹ</span>
+            <span>情報</span>
           </button>
         </div>
       )}

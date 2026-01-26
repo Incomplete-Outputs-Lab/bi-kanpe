@@ -1,12 +1,12 @@
 # Bi-Kanpe
 
-A bidirectional cue card (kanpe) system for event management with WebSocket-based real-time communication between director (server) and performers (clients).
+A bidirectional cue card (kanpe) system for event management with WebSocket-based real-time communication between director (server) and casters (clients).
 
 ## Features
 
 ### Phase 1 (Current Implementation)
 
-- **Dual-Mode Operation**: Run as either Director (Server) or Performer (Client)
+- **Dual-Mode Operation**: Run as either Director (Server) or Caster (Client)
 - **WebSocket Communication**: Real-time message delivery over WebSocket
 - **Virtual Monitor Routing**: Target specific virtual monitors or broadcast to all
 - **Priority Levels**: Normal, High, and Urgent message priorities
@@ -64,17 +64,17 @@ The compiled application will be in `app/src-tauri/target/release/`.
 
 1. Launch the application and select "Director (Server)" mode
 2. Click "Start Server" (default port: 9876)
-3. Wait for performers to connect (they will appear in the "Connected Clients" list)
+3. Wait for casters to connect (they will appear in the "Connected Clients" list)
 4. Compose messages:
    - Enter message content
    - Select target monitor IDs (or "All" for broadcast)
    - Choose priority level
    - Click "Send Message"
-5. View feedback from performers in the "Feedback" panel
+5. View feedback from casters in the "Feedback" panel
 
-### Performer (Client) Mode
+### Caster (Client) Mode
 
-1. Launch the application and select "Performer (Client)" mode
+1. Launch the application and select "Caster (Client)" mode
 2. Configure connection:
    - Enter server address (e.g., `localhost:9876` or `192.168.1.100:9876`)
    - Enter your client name

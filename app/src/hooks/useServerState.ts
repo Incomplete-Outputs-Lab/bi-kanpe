@@ -30,6 +30,16 @@ export function useServerState() {
       }
     );
 
+    // Listen for server_stopped event
+    const unlistenServerStopped = listen("server_stopped", () => {
+      setState({
+        isRunning: false,
+        port: null,
+        clients: [],
+        feedbackMessages: [],
+      });
+    });
+
     // Listen for client_connected event
     const unlistenClientConnected = listen<ConnectedClientInfo>(
       "client_connected",
@@ -65,6 +75,7 @@ export function useServerState() {
     // Cleanup listeners on unmount
     return () => {
       unlistenServerStarted.then((fn) => fn());
+      unlistenServerStopped.then((fn) => fn());
       unlistenClientConnected.then((fn) => fn());
       unlistenClientDisconnected.then((fn) => fn());
       unlistenFeedback.then((fn) => fn());

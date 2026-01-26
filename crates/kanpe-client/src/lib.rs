@@ -1,6 +1,6 @@
-//! Kanpe Client - WebSocket client for performer mode
+//! Kanpe Client - WebSocket client for caster mode
 //!
-//! This crate provides the WebSocket client implementation for the performer
+//! This crate provides the WebSocket client implementation for the caster
 //! (client) role in the Bi-Kanpe system.
 
 mod client;

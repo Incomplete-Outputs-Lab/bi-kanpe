@@ -14,7 +14,7 @@ type WsSink = futures_util::stream::SplitSink<
     WsMessage,
 >;
 
-/// WebSocket client for Kanpe performer mode
+/// WebSocket client for Kanpe caster mode
 pub struct KanpeClient {
     sink: Arc<RwLock<Option<WsSink>>>,
     event_tx: mpsc::UnboundedSender<ClientEvent>,

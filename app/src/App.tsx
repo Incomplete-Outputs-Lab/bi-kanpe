@@ -20,8 +20,8 @@ function App() {
   return (
     <main>
       {mode === "not_selected" && <ModeSelector onSelectMode={handleSelectMode} />}
-      {mode === "server" && <ServerView />}
-      {mode === "client" && <ClientView />}
+      {mode === "server" && <ServerView onBackToMenu={handleBackToModeSelection} />}
+      {mode === "client" && <ClientView onBackToMenu={handleBackToModeSelection} />}
     </main>
   );
 }
