@@ -87,6 +87,22 @@ impl KanpeServer {
         broadcast_message(&self.client_manager, &message).await
     }
 
+    /// Broadcast a flash command to all connected clients
+    pub async fn broadcast_flash_command(
+        &self,
+        message: Message,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        broadcast_message(&self.client_manager, &message).await
+    }
+
+    /// Broadcast a clear command to all connected clients
+    pub async fn broadcast_clear_command(
+        &self,
+        message: Message,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        broadcast_message(&self.client_manager, &message).await
+    }
+
     /// Get list of connected clients
     pub async fn get_connected_clients(&self) -> Vec<ClientInfo> {
         self.client_manager.get_all_clients().await

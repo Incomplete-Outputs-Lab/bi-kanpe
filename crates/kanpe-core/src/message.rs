@@ -65,6 +65,18 @@ pub enum Message {
         timestamp: i64,
         payload: MonitorUpdatedPayload,
     },
+    /// Server sends flash command to clients
+    FlashCommand {
+        id: String,
+        timestamp: i64,
+        payload: FlashCommandPayload,
+    },
+    /// Server sends clear command to clients
+    ClearCommand {
+        id: String,
+        timestamp: i64,
+        payload: ClearCommandPayload,
+    },
 }
 
 /// Payload for ClientHello message
@@ -135,6 +147,20 @@ pub struct MonitorRemovedPayload {
 pub struct MonitorUpdatedPayload {
     /// The updated monitor
     pub monitor: VirtualMonitor,
+}
+
+/// Payload for FlashCommand
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FlashCommandPayload {
+    /// Target virtual monitor IDs (0 = all monitors)
+    pub target_monitor_ids: Vec<u32>,
+}
+
+/// Payload for ClearCommand
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClearCommandPayload {
+    /// Target virtual monitor IDs (0 = all monitors)
+    pub target_monitor_ids: Vec<u32>,
 }
 
 impl Message {
@@ -250,6 +276,24 @@ impl Message {
         }
     }
 
+    /// Create a new FlashCommand message
+    pub fn flash_command(target_monitor_ids: Vec<u32>) -> Self {
+        Message::FlashCommand {
+            id: new_id(),
+            timestamp: timestamp(),
+            payload: FlashCommandPayload { target_monitor_ids },
+        }
+    }
+
+    /// Create a new ClearCommand message
+    pub fn clear_command(target_monitor_ids: Vec<u32>) -> Self {
+        Message::ClearCommand {
+            id: new_id(),
+            timestamp: timestamp(),
+            payload: ClearCommandPayload { target_monitor_ids },
+        }
+    }
+
     /// Get the message ID
     pub fn id(&self) -> &str {
         match self {
@@ -263,6 +307,8 @@ impl Message {
             Message::MonitorAdded { id, .. } => id,
             Message::MonitorRemoved { id, .. } => id,
             Message::MonitorUpdated { id, .. } => id,
+            Message::FlashCommand { id, .. } => id,
+            Message::ClearCommand { id, .. } => id,
         }
     }
 
@@ -279,6 +325,8 @@ impl Message {
             Message::MonitorAdded { timestamp, .. } => *timestamp,
             Message::MonitorRemoved { timestamp, .. } => *timestamp,
             Message::MonitorUpdated { timestamp, .. } => *timestamp,
+            Message::FlashCommand { timestamp, .. } => *timestamp,
+            Message::ClearCommand { timestamp, .. } => *timestamp,
         }
     }
 }
@@ -365,5 +413,21 @@ mod tests {
         let msg = Message::ping();
         assert!(!msg.id().is_empty());
         assert!(msg.timestamp() > 0);
+    }
+
+    #[test]
+    fn test_flash_command_serialization() {
+        let msg = Message::flash_command(vec![1, 2]);
+        let json = serde_json::to_string(&msg).unwrap();
+        assert!(json.contains("\"type\":\"flash_command\""));
+        assert!(json.contains("\"target_monitor_ids\":[1,2]"));
+    }
+
+    #[test]
+    fn test_clear_command_serialization() {
+        let msg = Message::clear_command(vec![0]);
+        let json = serde_json::to_string(&msg).unwrap();
+        assert!(json.contains("\"type\":\"clear_command\""));
+        assert!(json.contains("\"target_monitor_ids\":[0]"));
     }
 }

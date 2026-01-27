@@ -76,6 +76,28 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
     }
   };
 
+  const handleSendFlash = async () => {
+    try {
+      setError(null);
+      await invoke("send_flash_command", {
+        targetMonitorIds,
+      });
+    } catch (err) {
+      setError(String(err));
+    }
+  };
+
+  const handleSendClear = async () => {
+    try {
+      setError(null);
+      await invoke("send_clear_command", {
+        targetMonitorIds,
+      });
+    } catch (err) {
+      setError(String(err));
+    }
+  };
+
   const toggleMonitorId = (id: number) => {
     if (id === 0) {
       // If "All" is selected, clear other selections
@@ -728,6 +750,47 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
               >
                 📤 メッセージを送信
               </button>
+
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  onClick={handleSendFlash}
+                  disabled={targetMonitorIds.length === 0}
+                  style={{
+                    flex: 1,
+                    padding: "0.75rem",
+                    fontSize: "1rem",
+                    fontWeight: "600",
+                    backgroundColor: targetMonitorIds.length > 0 ? "#f59e0b" : "#d1d5db",
+                    color: targetMonitorIds.length > 0 ? "white" : "#6b7280",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: targetMonitorIds.length > 0 ? "pointer" : "not-allowed",
+                    transition: "all 0.2s ease",
+                  }}
+                  title="選択したモニターに点滅を送信"
+                >
+                  ⚡ 点滅
+                </button>
+                <button
+                  onClick={handleSendClear}
+                  disabled={targetMonitorIds.length === 0}
+                  style={{
+                    flex: 1,
+                    padding: "0.75rem",
+                    fontSize: "1rem",
+                    fontWeight: "600",
+                    backgroundColor: targetMonitorIds.length > 0 ? "#ef4444" : "#d1d5db",
+                    color: targetMonitorIds.length > 0 ? "white" : "#6b7280",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: targetMonitorIds.length > 0 ? "pointer" : "not-allowed",
+                    transition: "all 0.2s ease",
+                  }}
+                  title="選択したモニターの表示をクリア"
+                >
+                  🗑 クリア
+                </button>
+              </div>
             </div>
           </div>
         ) : null}

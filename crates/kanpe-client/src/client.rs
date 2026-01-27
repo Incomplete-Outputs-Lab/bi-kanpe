@@ -104,6 +104,16 @@ impl KanpeClient {
                                                     monitor: payload.monitor,
                                                 });
                                             }
+                                            Message::FlashCommand { payload, .. } => {
+                                                let _ = event_tx.send(ClientEvent::FlashReceived {
+                                                    target_monitor_ids: payload.target_monitor_ids,
+                                                });
+                                            }
+                                            Message::ClearCommand { payload, .. } => {
+                                                let _ = event_tx.send(ClientEvent::ClearReceived {
+                                                    target_monitor_ids: payload.target_monitor_ids,
+                                                });
+                                            }
                                             Message::Ping { .. } => {
                                                 // Respond with pong
                                                 let pong = Message::pong();

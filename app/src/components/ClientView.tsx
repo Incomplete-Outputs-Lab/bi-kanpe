@@ -16,9 +16,36 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [showConnectionPanel, setShowConnectionPanel] = useState<boolean>(true);
   const [showTemplateManagement, setShowTemplateManagement] = useState<boolean>(false);
+  const [fontSize, setFontSize] = useState<number>(4);
+  const [isFlashing, setIsFlashing] = useState<boolean>(false);
+  const [feedbackMode, setFeedbackMode] = useState<"reply" | "new">("reply");
+  const [newFeedbackContent, setNewFeedbackContent] = useState<string>("");
+  const [newFeedbackType, setNewFeedbackType] = useState<FeedbackType>("info");
 
   const clientState = useClientState(displayMonitorIds);
   const templates = useTemplates();
+
+  // Load font size from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("clientFontSize");
+    if (saved) {
+      setFontSize(Number(saved));
+    }
+  }, []);
+
+  // Save font size to localStorage
+  useEffect(() => {
+    localStorage.setItem("clientFontSize", fontSize.toString());
+  }, [fontSize]);
+
+  // Handle flash trigger
+  useEffect(() => {
+    if (clientState.flashTrigger > 0) {
+      setIsFlashing(true);
+      const timer = setTimeout(() => setIsFlashing(false), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [clientState.flashTrigger]);
 
   // Get available monitor IDs from server
   const availableMonitors = clientState.availableMonitors;
@@ -85,6 +112,26 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
         replyToMessageId: currentMessage.id,
         feedbackType,
       });
+    } catch (err) {
+      setError(String(err));
+    }
+  };
+
+  const handleSendNewFeedback = async () => {
+    if (!newFeedbackContent.trim()) {
+      setError("フィードバック内容を入力してください");
+      return;
+    }
+
+    try {
+      setError(null);
+      await invoke("send_feedback", {
+        content: newFeedbackContent,
+        clientName,
+        replyToMessageId: "",
+        feedbackType: newFeedbackType,
+      });
+      setNewFeedbackContent("");
     } catch (err) {
       setError(String(err));
     }
@@ -289,6 +336,24 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
               </p>
             </div>
 
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              <label style={{ fontWeight: "600", color: "#000" }}>
+                フォントサイズ: {fontSize}rem
+              </label>
+              <input
+                type="range"
+                min="2"
+                max="8"
+                step="0.5"
+                value={fontSize}
+                onChange={(e) => setFontSize(Number(e.target.value))}
+                style={{ width: "100%" }}
+              />
+              <p style={{ margin: 0, fontSize: "0.85rem", color: "#555", fontStyle: "italic" }}>
+                💡 メッセージ表示のフォントサイズを調整
+              </p>
+            </div>
+
             <div style={{ marginTop: "0.5rem" }}>
               {!clientState.isConnected ? (
                 <button
@@ -374,6 +439,7 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
 
       {/* Fullscreen Message Display */}
       <div
+        className={isFlashing ? "flash-animation" : ""}
         style={{
           flex: 1,
           display: "flex",
@@ -408,7 +474,7 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
           >
             <div
               style={{
-                fontSize: "4rem",
+                fontSize: `${fontSize}rem`,
                 fontWeight: "bold",
                 color: getPriorityColor(currentMessage.payload.priority),
                 marginBottom: "1.5rem",
@@ -502,6 +568,7 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
       {/* Feedback Buttons */}
       {clientState.isConnected ? (
         <div
+          className="scrollable"
           style={{
             padding: "1.5rem",
             borderTop: "2px solid #ccc",
@@ -509,12 +576,43 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
             flexDirection: "column",
             gap: "1rem",
             backgroundColor: "#f9f9f9",
+            maxHeight: "40vh",
+            overflowY: "auto",
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: "0.95rem", fontWeight: "600", color: "#333" }}>
-              フィードバック送信
-            </span>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button
+                onClick={() => setFeedbackMode("reply")}
+                style={{
+                  padding: "0.5rem 1rem",
+                  fontSize: "0.9rem",
+                  fontWeight: "600",
+                  backgroundColor: feedbackMode === "reply" ? "#764ba2" : "#d1d5db",
+                  color: feedbackMode === "reply" ? "white" : "#333",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              >
+                返信
+              </button>
+              <button
+                onClick={() => setFeedbackMode("new")}
+                style={{
+                  padding: "0.5rem 1rem",
+                  fontSize: "0.9rem",
+                  fontWeight: "600",
+                  backgroundColor: feedbackMode === "new" ? "#764ba2" : "#d1d5db",
+                  color: feedbackMode === "new" ? "white" : "#333",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              >
+                新規送信
+              </button>
+            </div>
             <button
               onClick={() => setShowTemplateManagement(!showTemplateManagement)}
               style={{
@@ -532,64 +630,130 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
             </button>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              gap: "1rem",
-              justifyContent: "center",
-              flexWrap: "wrap",
-            }}
-          >
-            {templates.config && templates.config.client_templates.length > 0 ? (
-              templates.config.client_templates.map((template) => {
-                const feedbackTypeConfig = {
-                  ack: { emoji: "✓", label: "了解", color: "#22c55e" },
-                  question: { emoji: "?", label: "質問", color: "#3b82f6" },
-                  issue: { emoji: "⚠", label: "問題報告", color: "#f59e0b" },
-                  info: { emoji: "ℹ", label: "情報", color: "#8b5cf6" },
-                }[template.feedback_type] || { emoji: "•", label: template.feedback_type, color: "#6b7280" };
+          {feedbackMode === "reply" ? (
+            <div
+              style={{
+                display: "flex",
+                gap: "1rem",
+                justifyContent: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              {templates.config && templates.config.client_templates.length > 0 ? (
+                templates.config.client_templates.map((template) => {
+                  const feedbackTypeConfig = {
+                    ack: { emoji: "✓", label: "了解", color: "#22c55e" },
+                    question: { emoji: "?", label: "質問", color: "#3b82f6" },
+                    issue: { emoji: "⚠", label: "問題報告", color: "#f59e0b" },
+                    info: { emoji: "ℹ", label: "情報", color: "#8b5cf6" },
+                  }[template.feedback_type] || { emoji: "•", label: template.feedback_type, color: "#6b7280" };
 
-                return (
-                  <button
-                    key={template.id}
-                    onClick={() => handleSendFeedback(template.content, template.feedback_type)}
-                    disabled={!currentMessage}
-                    style={{
-                      padding: "1rem 2rem",
-                      fontSize: "1.1rem",
-                      fontWeight: "600",
-                      backgroundColor: currentMessage ? feedbackTypeConfig.color : "#ccc",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "6px",
-                      cursor: currentMessage ? "pointer" : "not-allowed",
-                      transition: "all 0.2s ease",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: "0.25rem",
-                      opacity: currentMessage ? 1 : 0.5,
-                    }}
-                    onMouseEnter={(e) => {
-                      if (currentMessage) e.currentTarget.style.transform = "scale(1.05)";
-                    }}
-                    onMouseLeave={(e) => {
-                      if (currentMessage) e.currentTarget.style.transform = "scale(1)";
-                    }}
-                  >
-                    <span style={{ fontSize: "1.5rem" }}>{feedbackTypeConfig.emoji}</span>
-                    <span>{template.content}</span>
-                  </button>
-                );
-              })
-            ) : (
-              <p style={{ color: "#999", fontStyle: "italic", margin: 0 }}>
-                テンプレートがありません。テンプレート管理から追加してください。
-              </p>
-            )}
-          </div>
+                  return (
+                    <button
+                      key={template.id}
+                      onClick={() => handleSendFeedback(template.content, template.feedback_type)}
+                      disabled={!currentMessage}
+                      style={{
+                        padding: "1rem 2rem",
+                        fontSize: "1.1rem",
+                        fontWeight: "600",
+                        backgroundColor: currentMessage ? feedbackTypeConfig.color : "#ccc",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "6px",
+                        cursor: currentMessage ? "pointer" : "not-allowed",
+                        transition: "all 0.2s ease",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: "0.25rem",
+                        opacity: currentMessage ? 1 : 0.5,
+                      }}
+                      onMouseEnter={(e) => {
+                        if (currentMessage) e.currentTarget.style.transform = "scale(1.05)";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentMessage) e.currentTarget.style.transform = "scale(1)";
+                      }}
+                    >
+                      <span style={{ fontSize: "1.5rem" }}>{feedbackTypeConfig.emoji}</span>
+                      <span>{template.content}</span>
+                    </button>
+                  );
+                })
+              ) : (
+                <p style={{ color: "#999", fontStyle: "italic", margin: 0 }}>
+                  テンプレートがありません。テンプレート管理から追加してください。
+                </p>
+              )}
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <label style={{ fontWeight: "600", color: "#333" }}>フィードバック種別:</label>
+                <select
+                  value={newFeedbackType}
+                  onChange={(e) => setNewFeedbackType(e.target.value as FeedbackType)}
+                  style={{
+                    padding: "0.75rem",
+                    fontSize: "1rem",
+                    borderRadius: "4px",
+                    border: "1px solid #ccc",
+                  }}
+                >
+                  <option value="info">情報</option>
+                  <option value="ack">了解</option>
+                  <option value="question">質問</option>
+                  <option value="issue">問題報告</option>
+                </select>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <label style={{ fontWeight: "600", color: "#333" }}>フィードバック内容:</label>
+                <textarea
+                  value={newFeedbackContent}
+                  onChange={(e) => setNewFeedbackContent(e.target.value)}
+                  placeholder="カンペに送信するフィードバックを入力..."
+                  rows={3}
+                  style={{
+                    padding: "0.75rem",
+                    fontSize: "1rem",
+                    borderRadius: "4px",
+                    border: "1px solid #ccc",
+                    resize: "vertical",
+                  }}
+                />
+              </div>
+              <button
+                onClick={handleSendNewFeedback}
+                style={{
+                  padding: "0.75rem 1.5rem",
+                  fontSize: "1.1rem",
+                  fontWeight: "600",
+                  backgroundColor: "#764ba2",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                }}
+              >
+                送信
+              </button>
+            </div>
+          )}
         </div>
       ) : null}
+
+      {/* CSS for flash animation */}
+      <style>{`
+        @keyframes flash {
+          0%, 100% { background-color: inherit; }
+          25%, 75% { background-color: #ff0000; }
+          50% { background-color: inherit; }
+        }
+        .flash-animation {
+          animation: flash 0.5s ease-in-out 3;
+        }
+      `}</style>
     </div>
   );
 }

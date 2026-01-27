@@ -26,6 +26,14 @@ export interface FeedbackMessagePayload {
   feedback_type: FeedbackType;
 }
 
+export interface FlashCommandPayload {
+  target_monitor_ids: number[];
+}
+
+export interface ClearCommandPayload {
+  target_monitor_ids: number[];
+}
+
 export type Message =
   | {
       type: "client_hello";
@@ -60,6 +68,18 @@ export type Message =
       type: "pong";
       id: string;
       timestamp: number;
+    }
+  | {
+      type: "flash_command";
+      id: string;
+      timestamp: number;
+      payload: FlashCommandPayload;
+    }
+  | {
+      type: "clear_command";
+      id: string;
+      timestamp: number;
+      payload: ClearCommandPayload;
     };
 
 export interface ConnectedClientInfo {

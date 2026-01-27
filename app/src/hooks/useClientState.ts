@@ -9,6 +9,8 @@ export interface ClientState {
   messages: Message[];
   displayMonitorIds: number[];
   availableMonitors: VirtualMonitor[];
+  flashTrigger: number;
+  clearTrigger: number;
 }
 
 export function useClientState(displayMonitorIds: number[] = []) {
@@ -19,6 +21,8 @@ export function useClientState(displayMonitorIds: number[] = []) {
     messages: [],
     displayMonitorIds,
     availableMonitors: [],
+    flashTrigger: 0,
+    clearTrigger: 0,
   });
 
   useEffect(() => {
@@ -79,6 +83,8 @@ export function useClientState(displayMonitorIds: number[] = []) {
             setState((prev) => ({
               ...prev,
               messages: [...prev.messages, message],
+              // Trigger flash for urgent messages
+              flashTrigger: message.payload.priority === "urgent" ? prev.flashTrigger + 1 : prev.flashTrigger,
             }));
           }
         }
@@ -133,6 +139,43 @@ export function useClientState(displayMonitorIds: number[] = []) {
       }
     );
 
+    // Listen for flash_received event
+    const unlistenFlash = listen<{ target_monitor_ids: number[] }>(
+      "flash_received",
+      (event) => {
+        const targetIds = event.payload.target_monitor_ids;
+        const shouldFlash =
+          targetIds.includes(0) || // 0 means all monitors
+          displayMonitorIds.some((id) => targetIds.includes(id));
+
+        if (shouldFlash) {
+          setState((prev) => ({
+            ...prev,
+            flashTrigger: prev.flashTrigger + 1,
+          }));
+        }
+      }
+    );
+
+    // Listen for clear_received event
+    const unlistenClear = listen<{ target_monitor_ids: number[] }>(
+      "clear_received",
+      (event) => {
+        const targetIds = event.payload.target_monitor_ids;
+        const shouldClear =
+          targetIds.includes(0) || // 0 means all monitors
+          displayMonitorIds.some((id) => targetIds.includes(id));
+
+        if (shouldClear) {
+          setState((prev) => ({
+            ...prev,
+            messages: [],
+            clearTrigger: prev.clearTrigger + 1,
+          }));
+        }
+      }
+    );
+
     // Cleanup listeners on unmount (parallel for optimal performance)
     return () => {
       Promise.all([
@@ -144,6 +187,8 @@ export function useClientState(displayMonitorIds: number[] = []) {
         unlistenMonitorAdded,
         unlistenMonitorRemoved,
         unlistenMonitorUpdated,
+        unlistenFlash,
+        unlistenClear,
       ]).then((unlisteners) => {
         unlisteners.forEach((fn) => fn());
       });

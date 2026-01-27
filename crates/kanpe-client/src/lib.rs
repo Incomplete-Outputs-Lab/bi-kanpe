@@ -37,5 +37,11 @@ pub mod events {
         MonitorUpdated {
             monitor: kanpe_core::types::VirtualMonitor,
         },
+        FlashReceived {
+            target_monitor_ids: Vec<u32>,
+        },
+        ClearReceived {
+            target_monitor_ids: Vec<u32>,
+        },
     }
 }

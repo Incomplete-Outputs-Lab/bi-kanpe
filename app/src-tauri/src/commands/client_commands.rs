@@ -85,6 +85,18 @@ pub async fn connect_to_server(
                 ClientEvent::MonitorUpdated { monitor } => {
                     let _ = app_handle.emit("monitor_updated", monitor);
                 }
+                ClientEvent::FlashReceived { target_monitor_ids } => {
+                    let _ = app_handle.emit(
+                        "flash_received",
+                        serde_json::json!({ "target_monitor_ids": target_monitor_ids }),
+                    );
+                }
+                ClientEvent::ClearReceived { target_monitor_ids } => {
+                    let _ = app_handle.emit(
+                        "clear_received",
+                        serde_json::json!({ "target_monitor_ids": target_monitor_ids }),
+                    );
+                }
             }
         }
     });

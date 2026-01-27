@@ -20,6 +20,8 @@ pub fn run() {
             commands::remove_virtual_monitor,
             commands::update_virtual_monitor,
             commands::get_virtual_monitors,
+            commands::send_flash_command,
+            commands::send_clear_command,
             // Client commands
             commands::connect_to_server,
             commands::disconnect_from_server,

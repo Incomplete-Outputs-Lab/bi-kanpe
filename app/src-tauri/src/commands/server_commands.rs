@@ -237,3 +237,41 @@ pub async fn get_virtual_monitors(state: State<'_, AppState>) -> Result<Vec<Virt
         Err("Server not running".to_string())
     }
 }
+
+/// Send a flash command to clients
+#[tauri::command]
+pub async fn send_flash_command(
+    target_monitor_ids: Vec<u32>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let server = state.server.read().await;
+    if let Some(server) = server.as_ref() {
+        let message = Message::flash_command(target_monitor_ids);
+        server
+            .broadcast_flash_command(message)
+            .await
+            .map_err(|e| format!("Failed to send flash command: {}", e))?;
+        Ok(())
+    } else {
+        Err("Server not running".to_string())
+    }
+}
+
+/// Send a clear command to clients
+#[tauri::command]
+pub async fn send_clear_command(
+    target_monitor_ids: Vec<u32>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let server = state.server.read().await;
+    if let Some(server) = server.as_ref() {
+        let message = Message::clear_command(target_monitor_ids);
+        server
+            .broadcast_clear_command(message)
+            .await
+            .map_err(|e| format!("Failed to send clear command: {}", e))?;
+        Ok(())
+    } else {
+        Err("Server not running".to_string())
+    }
+}
