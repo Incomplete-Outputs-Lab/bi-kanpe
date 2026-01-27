@@ -133,16 +133,20 @@ export function useClientState(displayMonitorIds: number[] = []) {
       }
     );
 
-    // Cleanup listeners on unmount
+    // Cleanup listeners on unmount (parallel for optimal performance)
     return () => {
-      unlistenConnected.then((fn) => fn());
-      unlistenDisconnected.then((fn) => fn());
-      unlistenWelcome.then((fn) => fn());
-      unlistenMessage.then((fn) => fn());
-      unlistenMonitorList.then((fn) => fn());
-      unlistenMonitorAdded.then((fn) => fn());
-      unlistenMonitorRemoved.then((fn) => fn());
-      unlistenMonitorUpdated.then((fn) => fn());
+      Promise.all([
+        unlistenConnected,
+        unlistenDisconnected,
+        unlistenWelcome,
+        unlistenMessage,
+        unlistenMonitorList,
+        unlistenMonitorAdded,
+        unlistenMonitorRemoved,
+        unlistenMonitorUpdated,
+      ]).then((unlisteners) => {
+        unlisteners.forEach((fn) => fn());
+      });
     };
   }, [displayMonitorIds]);
 

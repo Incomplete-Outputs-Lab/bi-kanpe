@@ -123,17 +123,21 @@ export function useServerState() {
       }));
     });
 
-    // Cleanup listeners on unmount
+    // Cleanup listeners on unmount (parallel for optimal performance)
     return () => {
-      unlistenServerStarted.then((fn) => fn());
-      unlistenServerStopped.then((fn) => fn());
-      unlistenClientConnected.then((fn) => fn());
-      unlistenClientDisconnected.then((fn) => fn());
-      unlistenFeedback.then((fn) => fn());
-      unlistenMonitorAdded.then((fn) => fn());
-      unlistenMonitorRemoved.then((fn) => fn());
-      unlistenMonitorUpdated.then((fn) => fn());
-      unlistenMessageSent.then((fn) => fn());
+      Promise.all([
+        unlistenServerStarted,
+        unlistenServerStopped,
+        unlistenClientConnected,
+        unlistenClientDisconnected,
+        unlistenFeedback,
+        unlistenMonitorAdded,
+        unlistenMonitorRemoved,
+        unlistenMonitorUpdated,
+        unlistenMessageSent,
+      ]).then((unlisteners) => {
+        unlisteners.forEach((fn) => fn());
+      });
     };
   }, []);
 

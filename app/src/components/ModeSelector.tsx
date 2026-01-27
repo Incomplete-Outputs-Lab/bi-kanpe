@@ -170,7 +170,7 @@ export function ModeSelector({ onSelectMode }: ModeSelectorProps) {
               marginBottom: "0.5rem",
             }}
           >
-            🎭
+            🎤
           </div>
           <h2
             style={{

@@ -70,11 +70,9 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
     } else {
       setTargetMonitorIds((prev) => {
         const newIds = prev.filter((i) => i !== 0); // Remove "All" if specific ID selected
-        if (newIds.includes(id)) {
-          return newIds.filter((i) => i !== id);
-        } else {
-          return [...newIds, id];
-        }
+        return newIds.includes(id)
+          ? newIds.filter((i) => i !== id)
+          : [...newIds, id];
       });
     }
   };
@@ -231,7 +229,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
         </div>
 
         {/* Monitor Management Panel */}
-        {serverState.isRunning && showMonitorManagement && (
+        {serverState.isRunning && showMonitorManagement ? (
           <div
             style={{
               border: "2px solid #8b5cf6",
@@ -427,10 +425,10 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
               </div>
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Template Management Panel */}
-        {serverState.isRunning && showTemplateManagement && templates.config && (
+        {serverState.isRunning && showTemplateManagement && templates.config ? (
           <div
             style={{
               border: "2px solid #8b5cf6",
@@ -452,10 +450,10 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
               onSelectTemplate={(template) => handleSelectTemplate(template as ServerTemplate)}
             />
           </div>
-        )}
+        ) : null}
 
         {/* Message Input */}
-        {serverState.isRunning && (
+        {serverState.isRunning ? (
           <div
             style={{
               border: "1px solid #ccc",
@@ -708,10 +706,10 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
               </button>
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Error Display */}
-        {error && (
+        {error ? (
           <div
             style={{
               padding: "0.5rem",
@@ -722,11 +720,11 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
           >
             Error: {error}
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Right Panel - Connected Clients and Feedback */}
-      {serverState.isRunning && (
+      {serverState.isRunning ? (
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "1rem" }}>
           {/* Connected Clients */}
           <div
@@ -927,7 +925,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
             )}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

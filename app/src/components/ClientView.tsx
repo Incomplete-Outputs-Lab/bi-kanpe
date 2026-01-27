@@ -91,13 +91,11 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
   };
 
   const toggleMonitorId = (id: number) => {
-    setDisplayMonitorIds((prev) => {
-      if (prev.includes(id)) {
-        return prev.filter((i) => i !== id);
-      } else {
-        return [...prev, id];
-      }
-    });
+    setDisplayMonitorIds((prev) =>
+      prev.includes(id)
+        ? prev.filter((i) => i !== id)
+        : [...prev, id]
+    );
   };
 
   const handlePopoutMonitor = async (monitorId: number, monitorName: string) => {
@@ -136,7 +134,7 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       {/* Connection Panel */}
-      {showConnectionPanel && (
+      {showConnectionPanel ? (
         <div
           style={{
             padding: "1.5rem",
@@ -146,7 +144,7 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
             <h2 style={{ margin: 0, color: "#764ba2", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              🎭 キャスターモード
+              🎤 キャスターモード
             </h2>
             <button
               onClick={handleBackToMenu}
@@ -361,7 +359,7 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
             )}
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Fullscreen Message Display */}
       <div
@@ -444,7 +442,7 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
         )}
 
         {/* Show/Hide Connection Panel Toggle (when connected) */}
-        {!showConnectionPanel && clientState.isConnected && (
+        {!showConnectionPanel && clientState.isConnected ? (
           <button
             onClick={() => setShowConnectionPanel(true)}
             style={{
@@ -464,11 +462,11 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
           >
             ⚙ 設定を表示
           </button>
-        )}
+        ) : null}
       </div>
 
       {/* Template Management Panel */}
-      {clientState.isConnected && showTemplateManagement && templates.config && (
+      {clientState.isConnected && showTemplateManagement && templates.config ? (
         <div
           style={{
             padding: "1.5rem",
@@ -488,10 +486,10 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
             onDeleteClientTemplate={templates.deleteClientTemplate}
           />
         </div>
-      )}
+      ) : null}
 
       {/* Feedback Buttons */}
-      {clientState.isConnected && (
+      {clientState.isConnected ? (
         <div
           style={{
             padding: "1.5rem",
@@ -580,7 +578,7 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
             )}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

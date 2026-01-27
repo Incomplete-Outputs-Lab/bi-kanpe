@@ -5,7 +5,8 @@
       "Bash(cargo test:*)",
       "Bash(test:*)",
       "Bash(tree:*)",
-      "Bash(cargo build:*)"
+      "Bash(cargo build:*)",
+      "Bash(bun run tauri:*)"
     ]
   }
 }
