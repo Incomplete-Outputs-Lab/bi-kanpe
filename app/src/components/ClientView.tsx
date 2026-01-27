@@ -194,10 +194,13 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
       {/* Connection Panel */}
       {showConnectionPanel ? (
         <div
+          className="scrollable"
           style={{
             padding: "1.5rem",
             borderBottom: "2px solid #764ba2",
             backgroundColor: "#f9f9f9",
+            maxHeight: "60vh",
+            overflowY: "auto",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
@@ -545,10 +548,13 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
       {/* Template Management Panel */}
       {clientState.isConnected && showTemplateManagement && templates.config ? (
         <div
+          className="scrollable"
           style={{
             padding: "1.5rem",
             borderTop: "2px solid #8b5cf6",
             backgroundColor: "white",
+            maxHeight: "40vh",
+            overflowY: "auto",
           }}
         >
           <TemplateManager

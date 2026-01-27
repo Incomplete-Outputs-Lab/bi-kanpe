@@ -167,7 +167,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
   return (
     <div style={{ padding: "1rem", display: "flex", gap: "1rem", height: "100vh", backgroundColor: "#f5f5f5" }}>
       {/* Left Panel - Server Controls and Message Input */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <div className="scrollable" style={{ flex: 1, display: "flex", flexDirection: "column", gap: "1rem", overflowY: "auto" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h2 style={{ margin: 0, fontSize: "1.8rem", color: "#667eea" }}>
             🎬 カンペモード
@@ -380,7 +380,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
               <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.95rem", color: "#333" }}>
                 登録済みモニター ({availableMonitors.length}個)
               </h4>
-              <div style={{
+              <div className="scrollable" style={{
                 display: "flex",
                 flexDirection: "column",
                 gap: "0.5rem",
@@ -812,9 +812,10 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
 
       {/* Right Panel - Connected Clients and Feedback */}
       {serverState.isRunning ? (
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <div className="scrollable" style={{ flex: 1, display: "flex", flexDirection: "column", gap: "1rem", overflowY: "auto" }}>
           {/* Connected Clients */}
           <div
+            className="scrollable"
             style={{
               border: "1px solid #ccc",
               padding: "1rem",
@@ -867,6 +868,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
 
           {/* Sent Messages and Feedback */}
           <div
+            className="scrollable"
             style={{
               border: "1px solid #ccc",
               padding: "1rem",
