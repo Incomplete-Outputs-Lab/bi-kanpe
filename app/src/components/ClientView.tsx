@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useClientState } from "../hooks/useClientState";
 import { useTemplates } from "../hooks/useTemplates";
@@ -55,7 +55,7 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
     }
   };
 
-  const handleBackToMenu = () => {
+  const handleBackToMenu = async () => {
     if (clientState.isConnected) {
       const confirmed = window.confirm(
         "サーバーに接続中です。切断してメインメニューに戻りますか？"
@@ -63,7 +63,7 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
       if (!confirmed) {
         return;
       }
-      handleDisconnect();
+      await handleDisconnect();
     }
     onBackToMenu();
   };
@@ -97,6 +97,17 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
         : [...prev, id]
     );
   };
+
+  // Cleanup: disconnect from server when component unmounts
+  useEffect(() => {
+    return () => {
+      if (clientState.isConnected) {
+        invoke("disconnect_from_server").catch((err) => {
+          console.error("Failed to disconnect from server on unmount:", err);
+        });
+      }
+    };
+  }, [clientState.isConnected]);
 
   const handlePopoutMonitor = async (monitorId: number, monitorName: string) => {
     try {

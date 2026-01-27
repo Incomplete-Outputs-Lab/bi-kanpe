@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useServerState } from "../hooks/useServerState";
 import { useTemplates } from "../hooks/useTemplates";
@@ -22,6 +22,19 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
   const [newMonitorName, setNewMonitorName] = useState<string>("");
   const [newMonitorDescription, setNewMonitorDescription] = useState<string>("");
   const [newMonitorColor, setNewMonitorColor] = useState<string>("#667eea");
+
+  const handleBackToMenu = async () => {
+    if (serverState.isRunning) {
+      const confirmed = window.confirm(
+        "サーバーが起動中です。停止してメインメニューに戻りますか？"
+      );
+      if (!confirmed) {
+        return;
+      }
+      await handleStopServer();
+    }
+    onBackToMenu();
+  };
 
   // Get monitors from server state
   const availableMonitors = serverState.monitors;
@@ -118,6 +131,17 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
     setPriority(template.priority);
   };
 
+  // Cleanup: stop server when component unmounts
+  useEffect(() => {
+    return () => {
+      if (serverState.isRunning) {
+        invoke("stop_server").catch((err) => {
+          console.error("Failed to stop server on unmount:", err);
+        });
+      }
+    };
+  }, [serverState.isRunning]);
+
   return (
     <div style={{ padding: "1rem", display: "flex", gap: "1rem", height: "100vh", backgroundColor: "#f5f5f5" }}>
       {/* Left Panel - Server Controls and Message Input */}
@@ -127,7 +151,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
             🎬 カンペモード
           </h2>
           <button
-            onClick={onBackToMenu}
+            onClick={handleBackToMenu}
             style={{
               padding: "0.5rem 1rem",
               fontSize: "0.95rem",
