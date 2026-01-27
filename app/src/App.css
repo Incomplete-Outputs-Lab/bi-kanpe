@@ -12,6 +12,25 @@ body, html, #root {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* スクロールバーを非表示 */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+*::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* 入力フィールドではテキスト選択を有効化 */
+input, textarea {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 :root {
