@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useClientState } from "../hooks/useClientState";
 import { useTemplates } from "../hooks/useTemplates";
 import { TemplateManager } from "./TemplateManager";
-import type { FeedbackType, ClientTemplate } from "../types/messages";
+import type { FeedbackType } from "../types/messages";
 
 interface ClientViewProps {
   onBackToMenu: () => void;

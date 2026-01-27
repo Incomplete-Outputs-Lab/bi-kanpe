@@ -31,7 +31,7 @@ export function useTemplates() {
     }
   };
 
-  const addServerTemplate = async (content: string, priority: Priority) => {
+  const addServerTemplate = async (content: string, priority: Priority): Promise<void> => {
     try {
       setError(null);
       const template = await invoke<ServerTemplate>("add_server_template", {
@@ -44,7 +44,6 @@ export function useTemplates() {
           server_templates: [...config.server_templates, template],
         });
       }
-      return template;
     } catch (err) {
       setError(String(err));
       throw err;
@@ -92,7 +91,7 @@ export function useTemplates() {
   const addClientTemplate = async (
     content: string,
     feedbackType: FeedbackType
-  ) => {
+  ): Promise<void> => {
     try {
       setError(null);
       const template = await invoke<ClientTemplate>("add_client_template", {
@@ -105,7 +104,6 @@ export function useTemplates() {
           client_templates: [...config.client_templates, template],
         });
       }
-      return template;
     } catch (err) {
       setError(String(err));
       throw err;
