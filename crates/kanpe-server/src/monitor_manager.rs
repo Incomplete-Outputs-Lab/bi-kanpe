@@ -21,12 +21,9 @@ impl MonitorManager {
         }
     }
 
-    /// Initialize with default monitors (4 monitors)
+    /// Initialize with default monitors (1 monitor)
     pub async fn initialize_default_monitors(&self) {
-        self.add_monitor("Monitor 1".to_string(), Some("First monitor".to_string()), Some("#FF5733".to_string())).await;
-        self.add_monitor("Monitor 2".to_string(), Some("Second monitor".to_string()), Some("#33FF57".to_string())).await;
-        self.add_monitor("Monitor 3".to_string(), Some("Third monitor".to_string()), Some("#3357FF".to_string())).await;
-        self.add_monitor("Monitor 4".to_string(), Some("Fourth monitor".to_string()), Some("#FF33F5".to_string())).await;
+        self.add_monitor("Monitor 1".to_string(), Some("Default monitor".to_string()), Some("#FF5733".to_string())).await;
     }
 
     /// Add a new monitor

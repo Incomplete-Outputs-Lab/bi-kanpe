@@ -21,8 +21,8 @@ export interface KanpeMessagePayload {
 
 export interface FeedbackMessagePayload {
   content: string;
-  source_monitor_id: number;
-  reply_to_message_id?: string;
+  client_name: string;
+  reply_to_message_id: string;
   feedback_type: FeedbackType;
 }
 
@@ -73,4 +73,21 @@ export interface VirtualMonitor {
   name: string;
   description?: string;
   color?: string;
+}
+
+export interface ServerTemplate {
+  id: string;
+  content: string;
+  priority: Priority;
+}
+
+export interface ClientTemplate {
+  id: string;
+  content: string;
+  feedback_type: FeedbackType;
+}
+
+export interface TemplateConfig {
+  server_templates: ServerTemplate[];
+  client_templates: ClientTemplate[];
 }

@@ -123,6 +123,7 @@ pub async fn send_kanpe_message(
     target_monitor_ids: Vec<u32>,
     content: String,
     priority: String,
+    app_handle: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let server = state.server.read().await;
@@ -137,9 +138,14 @@ pub async fn send_kanpe_message(
         // Create and send message
         let message = Message::kanpe_message(content, target_monitor_ids, priority);
         server
-            .broadcast_kanpe_message(message)
+            .broadcast_kanpe_message(message.clone())
             .await
             .map_err(|e| format!("Failed to send message: {}", e))?;
+
+        // Emit event for sent message
+        app_handle
+            .emit("kanpe_message_sent", &message)
+            .map_err(|e| format!("Failed to emit event: {}", e))?;
 
         Ok(())
     } else {

@@ -101,10 +101,10 @@ pub struct KanpeMessagePayload {
 pub struct FeedbackMessagePayload {
     /// Feedback content (text)
     pub content: String,
-    /// Source monitor ID where feedback originated
-    pub source_monitor_id: u32,
-    /// Optional: ID of message being replied to
-    pub reply_to_message_id: Option<String>,
+    /// Client name who sent the feedback
+    pub client_name: String,
+    /// ID of message being replied to
+    pub reply_to_message_id: String,
     /// Type of feedback
     pub feedback_type: FeedbackType,
 }
@@ -182,8 +182,8 @@ impl Message {
     /// Create a new FeedbackMessage
     pub fn feedback_message(
         content: String,
-        source_monitor_id: u32,
-        reply_to_message_id: Option<String>,
+        client_name: String,
+        reply_to_message_id: String,
         feedback_type: FeedbackType,
     ) -> Self {
         Message::FeedbackMessage {
@@ -191,7 +191,7 @@ impl Message {
             timestamp: timestamp(),
             payload: FeedbackMessagePayload {
                 content,
-                source_monitor_id,
+                client_name,
                 reply_to_message_id,
                 feedback_type,
             },
@@ -323,14 +323,14 @@ mod tests {
     fn test_feedback_message_serialization() {
         let msg = Message::feedback_message(
             "Got it".to_string(),
-            1,
-            Some("msg-123".to_string()),
+            "TestClient".to_string(),
+            "msg-123".to_string(),
             FeedbackType::Ack,
         );
         let json = serde_json::to_string(&msg).unwrap();
         assert!(json.contains("\"type\":\"feedback_message\""));
         assert!(json.contains("\"content\":\"Got it\""));
-        assert!(json.contains("\"source_monitor_id\":1"));
+        assert!(json.contains("\"client_name\":\"TestClient\""));
         assert!(json.contains("\"reply_to_message_id\":\"msg-123\""));
         assert!(json.contains("\"feedback_type\":\"ack\""));
     }

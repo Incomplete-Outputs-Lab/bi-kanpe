@@ -113,8 +113,8 @@ pub async fn disconnect_from_server(state: State<'_, AppState>) -> Result<(), St
 #[tauri::command]
 pub async fn send_feedback(
     content: String,
-    source_monitor_id: u32,
-    reply_to_message_id: Option<String>,
+    client_name: String,
+    reply_to_message_id: String,
     feedback_type: String,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
@@ -131,7 +131,7 @@ pub async fn send_feedback(
         // Create and send feedback message
         let message = Message::feedback_message(
             content,
-            source_monitor_id,
+            client_name,
             reply_to_message_id,
             feedback_type,
         );

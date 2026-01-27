@@ -1,6 +1,7 @@
 mod commands;
 mod config;
 mod state;
+mod templates;
 
 use state::AppState;
 
@@ -25,6 +26,14 @@ pub fn run() {
             commands::send_feedback,
             commands::create_popout_window,
             commands::close_popout_window,
+            // Template commands
+            commands::get_templates,
+            commands::add_server_template,
+            commands::update_server_template,
+            commands::delete_server_template,
+            commands::add_client_template,
+            commands::update_client_template,
+            commands::delete_client_template,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

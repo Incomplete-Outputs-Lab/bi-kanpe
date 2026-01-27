@@ -7,6 +7,7 @@ export interface ServerState {
   port: number | null;
   clients: ConnectedClientInfo[];
   feedbackMessages: Message[];
+  sentMessages: Message[];
   monitors: VirtualMonitor[];
 }
 
@@ -16,6 +17,7 @@ export function useServerState() {
     port: null,
     clients: [],
     feedbackMessages: [],
+    sentMessages: [],
     monitors: [],
   });
 
@@ -39,6 +41,7 @@ export function useServerState() {
         port: null,
         clients: [],
         feedbackMessages: [],
+        sentMessages: [],
         monitors: [],
       });
     });
@@ -112,6 +115,14 @@ export function useServerState() {
       }
     );
 
+    // Listen for kanpe_message_sent event
+    const unlistenMessageSent = listen<Message>("kanpe_message_sent", (event) => {
+      setState((prev) => ({
+        ...prev,
+        sentMessages: [...prev.sentMessages, event.payload],
+      }));
+    });
+
     // Cleanup listeners on unmount
     return () => {
       unlistenServerStarted.then((fn) => fn());
@@ -122,6 +133,7 @@ export function useServerState() {
       unlistenMonitorAdded.then((fn) => fn());
       unlistenMonitorRemoved.then((fn) => fn());
       unlistenMonitorUpdated.then((fn) => fn());
+      unlistenMessageSent.then((fn) => fn());
     };
   }, []);
 

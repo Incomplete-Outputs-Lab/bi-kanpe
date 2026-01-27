@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useClientState } from "../hooks/useClientState";
-import type { FeedbackType } from "../types/messages";
+import { useTemplates } from "../hooks/useTemplates";
+import { TemplateManager } from "./TemplateManager";
+import type { FeedbackType, ClientTemplate } from "../types/messages";
 
 interface ClientViewProps {
   onBackToMenu: () => void;
@@ -12,10 +14,11 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
   const [clientName, setClientName] = useState<string>("Caster 1");
   const [displayMonitorIds, setDisplayMonitorIds] = useState<number[]>([1]);
   const [error, setError] = useState<string | null>(null);
-  const [selectedMonitorId, setSelectedMonitorId] = useState<number>(1);
   const [showConnectionPanel, setShowConnectionPanel] = useState<boolean>(true);
+  const [showTemplateManagement, setShowTemplateManagement] = useState<boolean>(false);
 
   const clientState = useClientState(displayMonitorIds);
+  const templates = useTemplates();
 
   // Get available monitor IDs from server
   const availableMonitors = clientState.availableMonitors;
@@ -69,12 +72,17 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
     content: string,
     feedbackType: FeedbackType
   ) => {
+    if (!currentMessage) {
+      setError("返信対象のメッセージがありません");
+      return;
+    }
+
     try {
       setError(null);
       await invoke("send_feedback", {
         content,
-        sourceMonitorId: selectedMonitorId,
-        replyToMessageId: currentMessage?.id || null,
+        clientName,
+        replyToMessageId: currentMessage.id,
         feedbackType,
       });
     } catch (err) {
@@ -272,33 +280,6 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
               </p>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              <label style={{ fontWeight: "600", color: "#000" }}>フィードバック送信元モニター:</label>
-              <select
-                value={selectedMonitorId}
-                onChange={(e) => setSelectedMonitorId(Number(e.target.value))}
-                style={{
-                  padding: "0.75rem",
-                  borderRadius: "4px",
-                  border: "1px solid #ccc",
-                  fontSize: "1rem",
-                  cursor: "pointer",
-                }}
-              >
-                {displayMonitorIds.map((id) => {
-                  const monitor = availableMonitors.find((m) => m.id === id);
-                  return (
-                    <option key={id} value={id}>
-                      {monitor ? monitor.name : `モニター ${id}`}
-                    </option>
-                  );
-                })}
-              </select>
-              <p style={{ margin: 0, fontSize: "0.85rem", color: "#555", fontStyle: "italic" }}>
-                💡 フィードバックボタンを押した時の送信元モニターID（ポップアウトウィンドウでは自動設定）
-              </p>
-            </div>
-
             <div style={{ marginTop: "0.5rem" }}>
               {!clientState.isConnected ? (
                 <button
@@ -486,6 +467,29 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
         )}
       </div>
 
+      {/* Template Management Panel */}
+      {clientState.isConnected && showTemplateManagement && templates.config && (
+        <div
+          style={{
+            padding: "1.5rem",
+            borderTop: "2px solid #8b5cf6",
+            backgroundColor: "white",
+          }}
+        >
+          <TemplateManager
+            mode="client"
+            serverTemplates={[]}
+            clientTemplates={templates.config.client_templates}
+            onAddServerTemplate={async () => {}}
+            onUpdateServerTemplate={async () => {}}
+            onDeleteServerTemplate={async () => {}}
+            onAddClientTemplate={templates.addClientTemplate}
+            onUpdateClientTemplate={templates.updateClientTemplate}
+            onDeleteClientTemplate={templates.deleteClientTemplate}
+          />
+        </div>
+      )}
+
       {/* Feedback Buttons */}
       {clientState.isConnected && (
         <div
@@ -493,120 +497,88 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
             padding: "1.5rem",
             borderTop: "2px solid #ccc",
             display: "flex",
+            flexDirection: "column",
             gap: "1rem",
-            justifyContent: "center",
             backgroundColor: "#f9f9f9",
-            flexWrap: "wrap",
           }}
         >
-          <button
-            onClick={() => handleSendFeedback("了解しました", "ack")}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "0.95rem", fontWeight: "600", color: "#333" }}>
+              フィードバック送信
+            </span>
+            <button
+              onClick={() => setShowTemplateManagement(!showTemplateManagement)}
+              style={{
+                padding: "0.5rem 1rem",
+                fontSize: "0.9rem",
+                fontWeight: "600",
+                backgroundColor: "#8b5cf6",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              📝 テンプレート管理
+            </button>
+          </div>
+
+          <div
             style={{
-              padding: "1rem 2rem",
-              fontSize: "1.1rem",
-              fontWeight: "600",
-              backgroundColor: "#22c55e",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
               display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "0.25rem",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "scale(1.05)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
+              gap: "1rem",
+              justifyContent: "center",
+              flexWrap: "wrap",
             }}
           >
-            <span style={{ fontSize: "1.5rem" }}>✓</span>
-            <span>了解</span>
-          </button>
-          <button
-            onClick={() => handleSendFeedback("質問があります", "question")}
-            style={{
-              padding: "1rem 2rem",
-              fontSize: "1.1rem",
-              fontWeight: "600",
-              backgroundColor: "#3b82f6",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "0.25rem",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "scale(1.05)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-            }}
-          >
-            <span style={{ fontSize: "1.5rem" }}>?</span>
-            <span>質問</span>
-          </button>
-          <button
-            onClick={() => handleSendFeedback("問題が発生しています", "issue")}
-            style={{
-              padding: "1rem 2rem",
-              fontSize: "1.1rem",
-              fontWeight: "600",
-              backgroundColor: "#f59e0b",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "0.25rem",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "scale(1.05)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-            }}
-          >
-            <span style={{ fontSize: "1.5rem" }}>⚠</span>
-            <span>問題報告</span>
-          </button>
-          <button
-            onClick={() => handleSendFeedback("情報を共有します", "info")}
-            style={{
-              padding: "1rem 2rem",
-              fontSize: "1.1rem",
-              fontWeight: "600",
-              backgroundColor: "#8b5cf6",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "0.25rem",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "scale(1.05)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-            }}
-          >
-            <span style={{ fontSize: "1.5rem" }}>ℹ</span>
-            <span>情報</span>
-          </button>
+            {templates.config && templates.config.client_templates.length > 0 ? (
+              templates.config.client_templates.map((template) => {
+                const feedbackTypeConfig = {
+                  ack: { emoji: "✓", label: "了解", color: "#22c55e" },
+                  question: { emoji: "?", label: "質問", color: "#3b82f6" },
+                  issue: { emoji: "⚠", label: "問題報告", color: "#f59e0b" },
+                  info: { emoji: "ℹ", label: "情報", color: "#8b5cf6" },
+                }[template.feedback_type] || { emoji: "•", label: template.feedback_type, color: "#6b7280" };
+
+                return (
+                  <button
+                    key={template.id}
+                    onClick={() => handleSendFeedback(template.content, template.feedback_type)}
+                    disabled={!currentMessage}
+                    style={{
+                      padding: "1rem 2rem",
+                      fontSize: "1.1rem",
+                      fontWeight: "600",
+                      backgroundColor: currentMessage ? feedbackTypeConfig.color : "#ccc",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: currentMessage ? "pointer" : "not-allowed",
+                      transition: "all 0.2s ease",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: "0.25rem",
+                      opacity: currentMessage ? 1 : 0.5,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (currentMessage) e.currentTarget.style.transform = "scale(1.05)";
+                    }}
+                    onMouseLeave={(e) => {
+                      if (currentMessage) e.currentTarget.style.transform = "scale(1)";
+                    }}
+                  >
+                    <span style={{ fontSize: "1.5rem" }}>{feedbackTypeConfig.emoji}</span>
+                    <span>{template.content}</span>
+                  </button>
+                );
+              })
+            ) : (
+              <p style={{ color: "#999", fontStyle: "italic", margin: 0 }}>
+                テンプレートがありません。テンプレート管理から追加してください。
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>

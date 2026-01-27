@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useServerState } from "../hooks/useServerState";
-import type { Priority } from "../types/messages";
+import { useTemplates } from "../hooks/useTemplates";
+import { TemplateManager } from "./TemplateManager";
+import type { Priority, ServerTemplate } from "../types/messages";
 
 interface ServerViewProps {
   onBackToMenu: () => void;
@@ -9,12 +11,14 @@ interface ServerViewProps {
 
 export function ServerView({ onBackToMenu }: ServerViewProps) {
   const serverState = useServerState();
+  const templates = useTemplates();
   const [port, setPort] = useState<number>(9876);
   const [messageContent, setMessageContent] = useState<string>("");
   const [targetMonitorIds, setTargetMonitorIds] = useState<number[]>([0]);
   const [priority, setPriority] = useState<Priority>("normal");
   const [error, setError] = useState<string | null>(null);
   const [showMonitorManagement, setShowMonitorManagement] = useState<boolean>(false);
+  const [showTemplateManagement, setShowTemplateManagement] = useState<boolean>(false);
   const [newMonitorName, setNewMonitorName] = useState<string>("");
   const [newMonitorDescription, setNewMonitorDescription] = useState<string>("");
   const [newMonitorColor, setNewMonitorColor] = useState<string>("#667eea");
@@ -111,6 +115,11 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
     }
   };
 
+  const handleSelectTemplate = (template: ServerTemplate) => {
+    setMessageContent(template.content);
+    setPriority(template.priority);
+  };
+
   return (
     <div style={{ padding: "1rem", display: "flex", gap: "1rem", height: "100vh", backgroundColor: "#f5f5f5" }}>
       {/* Left Panel - Server Controls and Message Input */}
@@ -183,7 +192,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                 <span style={{ color: "#22c55e", fontWeight: "600", fontSize: "1.1rem" }}>
                   ● 起動中
                 </span>
-                {" - "}ポート <strong style={{ fontSize: "1.1rem", color: "#1f2937" }}>{serverState.port}</strong>
+                {" - "}<span style={{ color: "#000" }}>ポート</span> <strong style={{ fontSize: "1.1rem", color: "#1f2937" }}>{serverState.port}</strong>
               </p>
               <div style={{ display: "flex", gap: "0.5rem" }}>
                 <button
@@ -420,6 +429,31 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
           </div>
         )}
 
+        {/* Template Management Panel */}
+        {serverState.isRunning && showTemplateManagement && templates.config && (
+          <div
+            style={{
+              border: "2px solid #8b5cf6",
+              padding: "1.5rem",
+              borderRadius: "8px",
+              backgroundColor: "white",
+            }}
+          >
+            <TemplateManager
+              mode="server"
+              serverTemplates={templates.config.server_templates}
+              clientTemplates={[]}
+              onAddServerTemplate={templates.addServerTemplate}
+              onUpdateServerTemplate={templates.updateServerTemplate}
+              onDeleteServerTemplate={templates.deleteServerTemplate}
+              onAddClientTemplate={async () => {}}
+              onUpdateClientTemplate={async () => {}}
+              onDeleteClientTemplate={async () => {}}
+              onSelectTemplate={(template) => handleSelectTemplate(template as ServerTemplate)}
+            />
+          </div>
+        )}
+
         {/* Message Input */}
         {serverState.isRunning && (
           <div
@@ -433,8 +467,61 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
               backgroundColor: "#f9f9f9",
             }}
           >
-            <h3 style={{ marginTop: 0, color: "#000" }}>メッセージ送信</h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+              <h3 style={{ margin: 0, color: "#000" }}>メッセージ送信</h3>
+              <button
+                onClick={() => setShowTemplateManagement(!showTemplateManagement)}
+                style={{
+                  padding: "0.5rem 1rem",
+                  fontSize: "0.9rem",
+                  fontWeight: "600",
+                  backgroundColor: "#8b5cf6",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              >
+                📝 テンプレート
+              </button>
+            </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem", flex: 1 }}>
+              {/* Template Quick Access */}
+              {templates.config && templates.config.server_templates.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  <label style={{ fontWeight: "600", fontSize: "0.85rem", color: "#555" }}>
+                    クイックテンプレート:
+                  </label>
+                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                    {templates.config.server_templates.map((template) => (
+                      <button
+                        key={template.id}
+                        onClick={() => handleSelectTemplate(template)}
+                        style={{
+                          padding: "0.5rem 1rem",
+                          fontSize: "0.9rem",
+                          fontWeight: "500",
+                          backgroundColor: "#f3f4f6",
+                          color: "#374151",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          transition: "all 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = "#e5e7eb";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = "#f3f4f6";
+                        }}
+                      >
+                        {template.content}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 <label style={{ fontWeight: "600", fontSize: "0.95rem", color: "#000" }}>
                   メッセージ内容:
@@ -693,7 +780,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
             )}
           </div>
 
-          {/* Feedback Display */}
+          {/* Sent Messages and Feedback */}
           <div
             style={{
               border: "1px solid #ccc",
@@ -705,7 +792,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
             }}
           >
             <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: "0.5rem", color: "#000" }}>
-              💬 フィードバック
+              📤 送信メッセージとフィードバック
               <span
                 style={{
                   fontSize: "0.9rem",
@@ -713,50 +800,123 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                   color: "#555",
                 }}
               >
-                ({serverState.feedbackMessages.length})
+                ({serverState.sentMessages.length})
               </span>
             </h3>
-            {serverState.feedbackMessages.length === 0 ? (
+            {serverState.sentMessages.length === 0 ? (
               <p style={{ color: "#555", fontStyle: "italic" }}>
-                フィードバックはまだありません
+                まだメッセージを送信していません
               </p>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                {serverState.feedbackMessages
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {serverState.sentMessages
                   .slice()
                   .reverse()
                   .map((msg) => {
-                    if (msg.type === "feedback_message") {
+                    if (msg.type === "kanpe_message") {
+                      // Find all feedback for this message
+                      const feedbacks = serverState.feedbackMessages.filter(
+                        (fb) => fb.type === "feedback_message" && fb.payload.reply_to_message_id === msg.id
+                      );
+
                       const feedbackTypeEmoji = {
                         ack: "✓",
                         question: "?",
                         issue: "⚠",
                         info: "ℹ",
-                      }[msg.payload.feedback_type] || "•";
+                      };
+
+                      const priorityColor = {
+                        urgent: "#ff0000",
+                        high: "#ff8800",
+                        normal: "#333",
+                      }[msg.payload.priority] || "#333";
 
                       return (
                         <div
                           key={msg.id}
                           style={{
-                            padding: "0.75rem",
-                            border: "1px solid #ddd",
-                            borderRadius: "6px",
-                            backgroundColor: "#ffffff",
+                            padding: "1rem",
+                            border: "2px solid #e5e7eb",
+                            borderRadius: "8px",
+                            backgroundColor: "#fafafa",
                           }}
                         >
-                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
-                            <strong style={{ color: "#667eea" }}>
-                              モニター {msg.payload.source_monitor_id}
-                            </strong>
-                            <span style={{ fontSize: "0.8em", color: "#6b7280" }}>
-                              {formatTimestamp(msg.timestamp)}
-                            </span>
+                          {/* Sent Message */}
+                          <div style={{ marginBottom: "0.75rem" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                <span style={{ fontSize: "1.1rem", fontWeight: "600", color: priorityColor }}>
+                                  📢 {msg.payload.content}
+                                </span>
+                                <span
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    padding: "0.125rem 0.5rem",
+                                    borderRadius: "3px",
+                                    backgroundColor: priorityColor,
+                                    color: "white",
+                                    fontWeight: "600",
+                                  }}
+                                >
+                                  {msg.payload.priority === "urgent" ? "🚨 緊急" : msg.payload.priority === "high" ? "⚠ 重要" : "📝 通常"}
+                                </span>
+                              </div>
+                              <span style={{ fontSize: "0.85rem", color: "#6b7280" }}>
+                                {formatTimestamp(msg.timestamp)}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: "0.85rem", color: "#6b7280" }}>
+                              送信先: モニター {msg.payload.target_monitor_ids.includes(0) ? "全て" : msg.payload.target_monitor_ids.join(", ")}
+                            </div>
                           </div>
-                          <div style={{ fontSize: "1rem", marginBottom: "0.25rem", color: "#1f2937" }}>
-                            {msg.payload.content}
-                          </div>
-                          <div style={{ fontSize: "0.85em", color: "#374151" }}>
-                            {feedbackTypeEmoji} {msg.payload.feedback_type}
+
+                          {/* Feedback for this message */}
+                          <div
+                            style={{
+                              paddingLeft: "1rem",
+                              borderLeft: "3px solid #d1d5db",
+                            }}
+                          >
+                            {feedbacks.length === 0 ? (
+                              <div style={{ fontSize: "0.9rem", color: "#9ca3af", fontStyle: "italic" }}>
+                                💤 未応答
+                              </div>
+                            ) : (
+                              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                                {feedbacks.map((fb) => {
+                                  if (fb.type === "feedback_message") {
+                                    return (
+                                      <div
+                                        key={fb.id}
+                                        style={{
+                                          padding: "0.5rem",
+                                          borderRadius: "4px",
+                                          backgroundColor: "#ffffff",
+                                          border: "1px solid #e5e7eb",
+                                        }}
+                                      >
+                                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.25rem" }}>
+                                          <strong style={{ color: "#667eea", fontSize: "0.9rem" }}>
+                                            {feedbackTypeEmoji[fb.payload.feedback_type] || "•"} {fb.payload.client_name}
+                                          </strong>
+                                          <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>
+                                            {formatTimestamp(fb.timestamp)}
+                                          </span>
+                                        </div>
+                                        <div style={{ fontSize: "0.9rem", color: "#374151" }}>
+                                          {fb.payload.content}
+                                        </div>
+                                        <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "0.125rem" }}>
+                                          [{fb.payload.feedback_type}]
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
