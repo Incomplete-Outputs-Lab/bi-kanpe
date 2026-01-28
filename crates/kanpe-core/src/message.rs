@@ -337,11 +337,11 @@ mod tests {
 
     #[test]
     fn test_client_hello_serialization() {
-        let msg = Message::client_hello("TestClient".to_string(), vec![1, 2]);
+        let msg = Message::client_hello("TestClient".to_string(), vec!["1".to_string(), "2".to_string()]);
         let json = serde_json::to_string(&msg).unwrap();
         assert!(json.contains("\"type\":\"client_hello\""));
         assert!(json.contains("\"client_name\":\"TestClient\""));
-        assert!(json.contains("\"display_monitor_ids\":[1,2]"));
+        assert!(json.contains("\"display_monitor_ids\":[\"1\",\"2\"]"));
     }
 
     #[test]
@@ -357,13 +357,13 @@ mod tests {
     fn test_kanpe_message_serialization() {
         let msg = Message::kanpe_message(
             "Test message".to_string(),
-            vec![1],
+            vec!["1".to_string()],
             Priority::High,
         );
         let json = serde_json::to_string(&msg).unwrap();
         assert!(json.contains("\"type\":\"kanpe_message\""));
         assert!(json.contains("\"content\":\"Test message\""));
-        assert!(json.contains("\"target_monitor_ids\":[1]"));
+        assert!(json.contains("\"target_monitor_ids\":[\"1\"]"));
         assert!(json.contains("\"priority\":\"high\""));
     }
 
@@ -398,7 +398,7 @@ mod tests {
     fn test_message_roundtrip() {
         let original = Message::kanpe_message(
             "Test".to_string(),
-            vec![0],
+            vec!["ALL".to_string()],
             Priority::Normal,
         );
         let json = serde_json::to_string(&original).unwrap();
@@ -417,17 +417,17 @@ mod tests {
 
     #[test]
     fn test_flash_command_serialization() {
-        let msg = Message::flash_command(vec![1, 2]);
+        let msg = Message::flash_command(vec!["1".to_string(), "2".to_string()]);
         let json = serde_json::to_string(&msg).unwrap();
         assert!(json.contains("\"type\":\"flash_command\""));
-        assert!(json.contains("\"target_monitor_ids\":[1,2]"));
+        assert!(json.contains("\"target_monitor_ids\":[\"1\",\"2\"]"));
     }
 
     #[test]
     fn test_clear_command_serialization() {
-        let msg = Message::clear_command(vec![0]);
+        let msg = Message::clear_command(vec!["ALL".to_string()]);
         let json = serde_json::to_string(&msg).unwrap();
         assert!(json.contains("\"type\":\"clear_command\""));
-        assert!(json.contains("\"target_monitor_ids\":[0]"));
+        assert!(json.contains("\"target_monitor_ids\":[\"ALL\"]"));
     }
 }

@@ -11,6 +11,7 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
   const [clientName, setClientName] = useState<string>("Caster 1");
   const [error, setError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
+  const [showDisconnectWarning, setShowDisconnectWarning] = useState<boolean>(true);
 
   // Use empty array for display_monitor_ids - we'll receive all messages and filter in popout windows
   const clientState = useClientState([]);
@@ -37,6 +38,7 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
     try {
       setError(null);
       setIsConnecting(true);
+      setShowDisconnectWarning(true); // Reset warning visibility on new connection
       // Save client name to localStorage for popout windows
       localStorage.setItem("clientName", clientName);
       // Connect with empty display_monitor_ids to receive all messages
@@ -300,6 +302,38 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
                 }}
               >
                 ❌ エラー: {error}
+              </div>
+            )}
+
+            {clientState.disconnectReason && !clientState.isConnected && showDisconnectWarning && (
+              <div
+                style={{
+                  padding: "0.75rem",
+                  backgroundColor: "#fef3c7",
+                  border: "2px solid #f59e0b",
+                  borderRadius: "6px",
+                  fontWeight: "600",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <span>⚠️ 切断されました: {clientState.disconnectReason}</span>
+                <button
+                  onClick={() => setShowDisconnectWarning(false)}
+                  style={{
+                    padding: "0.25rem 0.75rem",
+                    fontSize: "0.9rem",
+                    backgroundColor: "#f59e0b",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                  }}
+                >
+                  閉じる
+                </button>
               </div>
             )}
           </div>

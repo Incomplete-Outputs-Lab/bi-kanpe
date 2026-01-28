@@ -11,6 +11,7 @@ export interface ClientState {
   availableMonitors: VirtualMonitor[];
   flashTrigger: number;
   clearTrigger: number;
+  disconnectReason: string | null;
 }
 
 export function useClientState(displayMonitorIds: string[] = []) {
@@ -22,6 +23,7 @@ export function useClientState(displayMonitorIds: string[] = []) {
     availableMonitors: [],
     flashTrigger: 0,
     clearTrigger: 0,
+    disconnectReason: null,
   });
 
   // Check initial connection status (important for popout windows)
@@ -52,6 +54,7 @@ export function useClientState(displayMonitorIds: string[] = []) {
           ...prev,
           isConnected: true,
           serverAddress: event.payload.server_address,
+          disconnectReason: null, // Clear any previous disconnect reason
         }));
       }
     );
@@ -66,6 +69,7 @@ export function useClientState(displayMonitorIds: string[] = []) {
           isConnected: false,
           serverAddress: null,
           serverName: null,
+          disconnectReason: event.payload.reason,
         }));
       }
     );

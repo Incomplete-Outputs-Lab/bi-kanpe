@@ -40,6 +40,8 @@ pub async fn connect_to_server(
     *state.client.write().await = Some(client);
 
     // Spawn task to handle client events
+    let client_arc = state.client.clone();
+    let mode_arc = state.mode.clone();
     tokio::spawn(async move {
         while let Some(event) = event_rx.recv().await {
             match event {
@@ -58,6 +60,10 @@ pub async fn connect_to_server(
                             "reason": reason,
                         }),
                     );
+
+                    // Clean up AppState
+                    *client_arc.write().await = None;
+                    *mode_arc.write().await = AppMode::NotSelected;
                 }
                 ClientEvent::MessageReceived { message } => {
                     let _ = app_handle.emit("kanpe_message_received", message);

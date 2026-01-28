@@ -80,23 +80,7 @@ impl KanpeServer {
     }
 
     /// Broadcast a message to all connected clients
-    pub async fn broadcast_kanpe_message(
-        &self,
-        message: Message,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        broadcast_message(&self.client_manager, &message).await
-    }
-
-    /// Broadcast a flash command to all connected clients
-    pub async fn broadcast_flash_command(
-        &self,
-        message: Message,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        broadcast_message(&self.client_manager, &message).await
-    }
-
-    /// Broadcast a clear command to all connected clients
-    pub async fn broadcast_clear_command(
+    pub async fn broadcast_message(
         &self,
         message: Message,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {

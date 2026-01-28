@@ -130,30 +130,28 @@ pub async fn send_kanpe_message(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let server = state.server.read().await;
-    if let Some(server) = server.as_ref() {
-        // Parse priority
-        let priority = match priority.to_lowercase().as_str() {
-            "high" => Priority::High,
-            "urgent" => Priority::Urgent,
-            _ => Priority::Normal,
-        };
+    let server = server.as_ref().ok_or("Server not running")?;
 
-        // Create and send message
-        let message = Message::kanpe_message(content, target_monitor_ids, priority);
-        server
-            .broadcast_kanpe_message(message.clone())
-            .await
-            .map_err(|e| format!("Failed to send message: {}", e))?;
+    // Parse priority
+    let priority = match priority.to_lowercase().as_str() {
+        "high" => Priority::High,
+        "urgent" => Priority::Urgent,
+        _ => Priority::Normal,
+    };
 
-        // Emit event for sent message
-        app_handle
-            .emit("kanpe_message_sent", &message)
-            .map_err(|e| format!("Failed to emit event: {}", e))?;
+    // Create and send message
+    let message = Message::kanpe_message(content, target_monitor_ids, priority);
+    server
+        .broadcast_message(message.clone())
+        .await
+        .map_err(|e| format!("Failed to send message: {}", e))?;
 
-        Ok(())
-    } else {
-        Err("Server not running".to_string())
-    }
+    // Emit event for sent message
+    app_handle
+        .emit("kanpe_message_sent", &message)
+        .map_err(|e| format!("Failed to emit event: {}", e))?;
+
+    Ok(())
 }
 
 /// Get list of connected clients
@@ -162,19 +160,17 @@ pub async fn get_connected_clients(
     state: State<'_, AppState>,
 ) -> Result<Vec<ConnectedClientInfo>, String> {
     let server = state.server.read().await;
-    if let Some(server) = server.as_ref() {
-        let clients = server.get_connected_clients().await;
-        Ok(clients
-            .into_iter()
-            .map(|c| ConnectedClientInfo {
-                client_id: c.client_id,
-                name: c.client_name,
-                monitor_ids: c.display_monitor_ids,
-            })
-            .collect())
-    } else {
-        Err("Server not running".to_string())
-    }
+    let server = server.as_ref().ok_or("Server not running")?;
+
+    let clients = server.get_connected_clients().await;
+    Ok(clients
+        .into_iter()
+        .map(|c| ConnectedClientInfo {
+            client_id: c.client_id,
+            name: c.client_name,
+            monitor_ids: c.display_monitor_ids,
+        })
+        .collect())
 }
 
 /// Add a new virtual monitor
@@ -186,14 +182,12 @@ pub async fn add_virtual_monitor(
     state: State<'_, AppState>,
 ) -> Result<VirtualMonitor, String> {
     let server = state.server.read().await;
-    if let Some(server) = server.as_ref() {
-        server
-            .add_monitor(name, description, color)
-            .await
-            .map_err(|e| format!("Failed to add monitor: {}", e))
-    } else {
-        Err("Server not running".to_string())
-    }
+    let server = server.as_ref().ok_or("Server not running")?;
+
+    server
+        .add_monitor(name, description, color)
+        .await
+        .map_err(|e| format!("Failed to add monitor: {}", e))
 }
 
 /// Remove a virtual monitor
@@ -203,14 +197,12 @@ pub async fn remove_virtual_monitor(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let server = state.server.read().await;
-    if let Some(server) = server.as_ref() {
-        server
-            .remove_monitor(monitor_id)
-            .await
-            .map_err(|e| format!("Failed to remove monitor: {}", e))
-    } else {
-        Err("Server not running".to_string())
-    }
+    let server = server.as_ref().ok_or("Server not running")?;
+
+    server
+        .remove_monitor(monitor_id)
+        .await
+        .map_err(|e| format!("Failed to remove monitor: {}", e))
 }
 
 /// Update a virtual monitor
@@ -220,25 +212,21 @@ pub async fn update_virtual_monitor(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let server = state.server.read().await;
-    if let Some(server) = server.as_ref() {
-        server
-            .update_monitor(monitor)
-            .await
-            .map_err(|e| format!("Failed to update monitor: {}", e))
-    } else {
-        Err("Server not running".to_string())
-    }
+    let server = server.as_ref().ok_or("Server not running")?;
+
+    server
+        .update_monitor(monitor)
+        .await
+        .map_err(|e| format!("Failed to update monitor: {}", e))
 }
 
 /// Get all virtual monitors
 #[tauri::command]
 pub async fn get_virtual_monitors(state: State<'_, AppState>) -> Result<Vec<VirtualMonitor>, String> {
     let server = state.server.read().await;
-    if let Some(server) = server.as_ref() {
-        Ok(server.get_monitors().await)
-    } else {
-        Err("Server not running".to_string())
-    }
+    let server = server.as_ref().ok_or("Server not running")?;
+
+    Ok(server.get_monitors().await)
 }
 
 /// Send a flash command to clients
@@ -248,16 +236,13 @@ pub async fn send_flash_command(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let server = state.server.read().await;
-    if let Some(server) = server.as_ref() {
-        let message = Message::flash_command(target_monitor_ids);
-        server
-            .broadcast_flash_command(message)
-            .await
-            .map_err(|e| format!("Failed to send flash command: {}", e))?;
-        Ok(())
-    } else {
-        Err("Server not running".to_string())
-    }
+    let server = server.as_ref().ok_or("Server not running")?;
+
+    let message = Message::flash_command(target_monitor_ids);
+    server
+        .broadcast_message(message)
+        .await
+        .map_err(|e| format!("Failed to send flash command: {}", e))
 }
 
 /// Send a clear command to clients
@@ -267,14 +252,11 @@ pub async fn send_clear_command(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let server = state.server.read().await;
-    if let Some(server) = server.as_ref() {
-        let message = Message::clear_command(target_monitor_ids);
-        server
-            .broadcast_clear_command(message)
-            .await
-            .map_err(|e| format!("Failed to send clear command: {}", e))?;
-        Ok(())
-    } else {
-        Err("Server not running".to_string())
-    }
+    let server = server.as_ref().ok_or("Server not running")?;
+
+    let message = Message::clear_command(target_monitor_ids);
+    server
+        .broadcast_message(message)
+        .await
+        .map_err(|e| format!("Failed to send clear command: {}", e))
 }
