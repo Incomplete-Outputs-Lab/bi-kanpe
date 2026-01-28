@@ -36,7 +36,7 @@ impl KanpeClient {
         &mut self,
         server_address: &str,
         client_name: String,
-        display_monitor_ids: Vec<u32>,
+        display_monitor_ids: Vec<String>,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // Connect to WebSocket
         let url = if server_address.starts_with("ws://") || server_address.starts_with("wss://") {

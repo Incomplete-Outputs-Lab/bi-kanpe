@@ -46,8 +46,8 @@ pub fn timestamp() -> i64 {
 /// Virtual monitor definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VirtualMonitor {
-    /// Unique monitor ID
-    pub id: u32,
+    /// Unique monitor ID (e.g., "A", "B", "C", "D")
+    pub id: String,
     /// Display name for the monitor
     pub name: String,
     /// Optional description

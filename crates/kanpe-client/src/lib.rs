@@ -32,16 +32,16 @@ pub mod events {
             monitor: kanpe_core::types::VirtualMonitor,
         },
         MonitorRemoved {
-            monitor_id: u32,
+            monitor_id: String,
         },
         MonitorUpdated {
             monitor: kanpe_core::types::VirtualMonitor,
         },
         FlashReceived {
-            target_monitor_ids: Vec<u32>,
+            target_monitor_ids: Vec<String>,
         },
         ClearReceived {
-            target_monitor_ids: Vec<u32>,
+            target_monitor_ids: Vec<String>,
         },
     }
 }

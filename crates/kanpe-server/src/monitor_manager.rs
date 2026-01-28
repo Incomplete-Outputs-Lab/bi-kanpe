@@ -8,8 +8,7 @@ use kanpe_core::types::VirtualMonitor;
 /// Manages virtual monitors for the server
 #[derive(Clone)]
 pub struct MonitorManager {
-    monitors: Arc<RwLock<HashMap<u32, VirtualMonitor>>>,
-    next_id: Arc<RwLock<u32>>,
+    monitors: Arc<RwLock<HashMap<String, VirtualMonitor>>>,
 }
 
 impl MonitorManager {
@@ -17,29 +16,39 @@ impl MonitorManager {
     pub fn new() -> Self {
         Self {
             monitors: Arc::new(RwLock::new(HashMap::new())),
-            next_id: Arc::new(RwLock::new(1)),
         }
     }
 
-    /// Initialize with default monitors (1 monitor)
+    /// Initialize with default monitors (A, B, C, D)
     pub async fn initialize_default_monitors(&self) {
-        self.add_monitor("Monitor 1".to_string(), Some("Default monitor".to_string()), Some("#FF5733".to_string())).await;
+        self.add_monitor_with_id("A".to_string(), "Monitor A".to_string(), Some("モニター A".to_string()), Some("#3b82f6".to_string())).await;
+        self.add_monitor_with_id("B".to_string(), "Monitor B".to_string(), Some("モニター B".to_string()), Some("#10b981".to_string())).await;
+        self.add_monitor_with_id("C".to_string(), "Monitor C".to_string(), Some("モニター C".to_string()), Some("#f59e0b".to_string())).await;
+        self.add_monitor_with_id("D".to_string(), "Monitor D".to_string(), Some("モニター D".to_string()), Some("#ef4444".to_string())).await;
     }
 
-    /// Add a new monitor
+    /// Add a new monitor with auto-generated ID
     pub async fn add_monitor(
         &self,
         name: String,
         description: Option<String>,
         color: Option<String>,
     ) -> VirtualMonitor {
-        let mut next_id = self.next_id.write().await;
-        let id = *next_id;
-        *next_id += 1;
-        drop(next_id);
+        // Generate a new unique ID (use timestamp-based or UUID-based approach)
+        let id = self.generate_new_id().await;
+        self.add_monitor_with_id(id, name, description, color).await
+    }
 
+    /// Add a new monitor with a specific ID
+    pub async fn add_monitor_with_id(
+        &self,
+        id: String,
+        name: String,
+        description: Option<String>,
+        color: Option<String>,
+    ) -> VirtualMonitor {
         let monitor = VirtualMonitor {
-            id,
+            id: id.clone(),
             name,
             description,
             color,
@@ -52,8 +61,21 @@ impl MonitorManager {
         monitor
     }
 
+    /// Generate a new unique ID for a monitor
+    async fn generate_new_id(&self) -> String {
+        let monitors = self.monitors.read().await;
+        let mut counter = 1;
+        loop {
+            let id = format!("M{}", counter);
+            if !monitors.contains_key(&id) {
+                return id;
+            }
+            counter += 1;
+        }
+    }
+
     /// Remove a monitor by ID
-    pub async fn remove_monitor(&self, id: u32) -> Option<VirtualMonitor> {
+    pub async fn remove_monitor(&self, id: String) -> Option<VirtualMonitor> {
         let mut monitors = self.monitors.write().await;
         monitors.remove(&id)
     }
@@ -62,21 +84,24 @@ impl MonitorManager {
     pub async fn update_monitor(&self, monitor: VirtualMonitor) -> bool {
         let mut monitors = self.monitors.write().await;
         if monitors.contains_key(&monitor.id) {
-            monitors.insert(monitor.id, monitor);
+            monitors.insert(monitor.id.clone(), monitor);
             true
         } else {
             false
         }
     }
 
-    /// Get all monitors
+    /// Get all monitors, sorted by ID for consistent ordering
     pub async fn get_all_monitors(&self) -> Vec<VirtualMonitor> {
         let monitors = self.monitors.read().await;
-        monitors.values().cloned().collect()
+        let mut monitor_list: Vec<VirtualMonitor> = monitors.values().cloned().collect();
+        // Sort by ID to ensure consistent ordering (A, B, C, D, etc.)
+        monitor_list.sort_by(|a, b| a.id.cmp(&b.id));
+        monitor_list
     }
 
     /// Get a specific monitor by ID
-    pub async fn get_monitor(&self, id: u32) -> Option<VirtualMonitor> {
+    pub async fn get_monitor(&self, id: String) -> Option<VirtualMonitor> {
         let monitors = self.monitors.read().await;
         monitors.get(&id).cloned()
     }

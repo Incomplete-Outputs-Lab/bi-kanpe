@@ -14,7 +14,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
   const templates = useTemplates();
   const [port, setPort] = useState<number>(9876);
   const [messageContent, setMessageContent] = useState<string>("");
-  const [targetMonitorIds, setTargetMonitorIds] = useState<number[]>([0]);
+  const [targetMonitorIds, setTargetMonitorIds] = useState<string[]>(["ALL"]);
   const [priority, setPriority] = useState<Priority>("normal");
   const [error, setError] = useState<string | null>(null);
   const [showMonitorManagement, setShowMonitorManagement] = useState<boolean>(false);
@@ -22,6 +22,12 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
   const [newMonitorName, setNewMonitorName] = useState<string>("");
   const [newMonitorDescription, setNewMonitorDescription] = useState<string>("");
   const [newMonitorColor, setNewMonitorColor] = useState<string>("#667eea");
+  const [isSendingMessage, setIsSendingMessage] = useState<boolean>(false);
+  const [messageSent, setMessageSent] = useState<boolean>(false);
+  const [isSendingFlash, setIsSendingFlash] = useState<boolean>(false);
+  const [flashSent, setFlashSent] = useState<boolean>(false);
+  const [isSendingClear, setIsSendingClear] = useState<boolean>(false);
+  const [clearSent, setClearSent] = useState<boolean>(false);
 
   const handleBackToMenu = async () => {
     if (serverState.isRunning) {
@@ -65,46 +71,61 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
 
     try {
       setError(null);
+      setIsSendingMessage(true);
       await invoke("send_kanpe_message", {
         targetMonitorIds,
         content: messageContent,
         priority,
       });
       setMessageContent("");
+      setMessageSent(true);
+      setTimeout(() => setMessageSent(false), 1500);
     } catch (err) {
       setError(String(err));
+    } finally {
+      setIsSendingMessage(false);
     }
   };
 
   const handleSendFlash = async () => {
     try {
       setError(null);
+      setIsSendingFlash(true);
       await invoke("send_flash_command", {
         targetMonitorIds,
       });
+      setFlashSent(true);
+      setTimeout(() => setFlashSent(false), 1500);
     } catch (err) {
       setError(String(err));
+    } finally {
+      setIsSendingFlash(false);
     }
   };
 
   const handleSendClear = async () => {
     try {
       setError(null);
+      setIsSendingClear(true);
       await invoke("send_clear_command", {
         targetMonitorIds,
       });
+      setClearSent(true);
+      setTimeout(() => setClearSent(false), 1500);
     } catch (err) {
       setError(String(err));
+    } finally {
+      setIsSendingClear(false);
     }
   };
 
-  const toggleMonitorId = (id: number) => {
-    if (id === 0) {
+  const toggleMonitorId = (id: string) => {
+    if (id === "ALL") {
       // If "All" is selected, clear other selections
-      setTargetMonitorIds([0]);
+      setTargetMonitorIds(["ALL"]);
     } else {
       setTargetMonitorIds((prev) => {
-        const newIds = prev.filter((i) => i !== 0); // Remove "All" if specific ID selected
+        const newIds = prev.filter((i) => i !== "ALL"); // Remove "All" if specific ID selected
         return newIds.includes(id)
           ? newIds.filter((i) => i !== id)
           : [...newIds, id];
@@ -137,7 +158,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
     }
   };
 
-  const handleRemoveMonitor = async (monitorId: number) => {
+  const handleRemoveMonitor = async (monitorId: string) => {
     try {
       setError(null);
       await invoke("remove_virtual_monitor", { monitorId });
@@ -621,18 +642,18 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                       padding: "0.5rem",
                       borderRadius: "4px",
                       cursor: "pointer",
-                      backgroundColor: targetMonitorIds.includes(0)
+                      backgroundColor: targetMonitorIds.includes("ALL")
                         ? "#667eea"
                         : "#f5f5f5",
-                      color: targetMonitorIds.includes(0) ? "white" : "#333",
+                      color: targetMonitorIds.includes("ALL") ? "white" : "#333",
                       transition: "all 0.2s ease",
-                      fontWeight: targetMonitorIds.includes(0) ? "600" : "normal",
+                      fontWeight: targetMonitorIds.includes("ALL") ? "600" : "normal",
                     }}
                   >
                     <input
                       type="checkbox"
-                      checked={targetMonitorIds.includes(0)}
-                      onChange={() => toggleMonitorId(0)}
+                      checked={targetMonitorIds.includes("ALL")}
+                      onChange={() => toggleMonitorId("ALL")}
                       style={{ cursor: "pointer" }}
                     />
                     すべて
@@ -734,61 +755,102 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
 
               <button
                 onClick={handleSendMessage}
-                disabled={!messageContent.trim() || targetMonitorIds.length === 0}
+                disabled={!messageContent.trim() || targetMonitorIds.length === 0 || isSendingMessage}
                 style={{
                   padding: "1rem",
                   fontSize: "1.1rem",
                   fontWeight: "600",
-                  backgroundColor: messageContent.trim() && targetMonitorIds.length > 0 ? "#667eea" : "#d1d5db",
+                  backgroundColor: messageSent ? "#10b981" : (messageContent.trim() && targetMonitorIds.length > 0 && !isSendingMessage ? "#667eea" : "#d1d5db"),
                   color: messageContent.trim() && targetMonitorIds.length > 0 ? "white" : "#6b7280",
                   border: "none",
                   borderRadius: "6px",
-                  cursor: messageContent.trim() && targetMonitorIds.length > 0 ? "pointer" : "not-allowed",
+                  cursor: messageContent.trim() && targetMonitorIds.length > 0 && !isSendingMessage ? "pointer" : "not-allowed",
                   transition: "all 0.2s ease",
                   marginTop: "auto",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.5rem",
                 }}
               >
-                📤 メッセージを送信
+                {isSendingMessage ? (
+                  <>
+                    <span className="spinner" style={{ borderColor: "rgba(255, 255, 255, 0.3)", borderTopColor: "white", width: "1rem", height: "1rem", border: "2px solid", borderRadius: "50%" }}></span>
+                    送信中...
+                  </>
+                ) : messageSent ? (
+                  <>
+                    ✓ 送信完了
+                  </>
+                ) : (
+                  "📤 メッセージを送信"
+                )}
               </button>
 
               <div style={{ display: "flex", gap: "0.5rem" }}>
                 <button
                   onClick={handleSendFlash}
-                  disabled={targetMonitorIds.length === 0}
+                  disabled={targetMonitorIds.length === 0 || isSendingFlash}
                   style={{
                     flex: 1,
                     padding: "0.75rem",
                     fontSize: "1rem",
                     fontWeight: "600",
-                    backgroundColor: targetMonitorIds.length > 0 ? "#f59e0b" : "#d1d5db",
+                    backgroundColor: flashSent ? "#10b981" : (targetMonitorIds.length > 0 && !isSendingFlash ? "#f59e0b" : "#d1d5db"),
                     color: targetMonitorIds.length > 0 ? "white" : "#6b7280",
                     border: "none",
                     borderRadius: "6px",
-                    cursor: targetMonitorIds.length > 0 ? "pointer" : "not-allowed",
+                    cursor: targetMonitorIds.length > 0 && !isSendingFlash ? "pointer" : "not-allowed",
                     transition: "all 0.2s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.5rem",
                   }}
                   title="選択したモニターに点滅を送信"
                 >
-                  ⚡ 点滅
+                  {isSendingFlash ? (
+                    <>
+                      <span className="spinner" style={{ borderColor: "rgba(255, 255, 255, 0.3)", borderTopColor: "white", width: "0.875rem", height: "0.875rem", border: "2px solid", borderRadius: "50%" }}></span>
+                      送信中...
+                    </>
+                  ) : flashSent ? (
+                    "✓ 送信完了"
+                  ) : (
+                    "⚡ 点滅"
+                  )}
                 </button>
                 <button
                   onClick={handleSendClear}
-                  disabled={targetMonitorIds.length === 0}
+                  disabled={targetMonitorIds.length === 0 || isSendingClear}
                   style={{
                     flex: 1,
                     padding: "0.75rem",
                     fontSize: "1rem",
                     fontWeight: "600",
-                    backgroundColor: targetMonitorIds.length > 0 ? "#ef4444" : "#d1d5db",
+                    backgroundColor: clearSent ? "#10b981" : (targetMonitorIds.length > 0 && !isSendingClear ? "#ef4444" : "#d1d5db"),
                     color: targetMonitorIds.length > 0 ? "white" : "#6b7280",
                     border: "none",
                     borderRadius: "6px",
-                    cursor: targetMonitorIds.length > 0 ? "pointer" : "not-allowed",
+                    cursor: targetMonitorIds.length > 0 && !isSendingClear ? "pointer" : "not-allowed",
                     transition: "all 0.2s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.5rem",
                   }}
                   title="選択したモニターの表示をクリア"
                 >
-                  🗑 クリア
+                  {isSendingClear ? (
+                    <>
+                      <span className="spinner" style={{ borderColor: "rgba(255, 255, 255, 0.3)", borderTopColor: "white", width: "0.875rem", height: "0.875rem", border: "2px solid", borderRadius: "50%" }}></span>
+                      送信中...
+                    </>
+                  ) : clearSent ? (
+                    "✓ 送信完了"
+                  ) : (
+                    "🗑 クリア"
+                  )}
                 </button>
               </div>
             </div>
@@ -858,7 +920,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                       {client.name}
                     </div>
                     <div style={{ fontSize: "0.85rem", color: "#374151" }}>
-                      担当モニター: {client.monitor_ids.map(id => `#${id}`).join(", ")}
+                      担当モニター: {client.monitor_ids.map(id => id).join(", ")}
                     </div>
                   </li>
                 ))}
@@ -954,7 +1016,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                               </span>
                             </div>
                             <div style={{ fontSize: "0.85rem", color: "#6b7280" }}>
-                              送信先: モニター {msg.payload.target_monitor_ids.includes(0) ? "全て" : msg.payload.target_monitor_ids.join(", ")}
+                              送信先: モニター {msg.payload.target_monitor_ids.includes("ALL") ? "全て" : msg.payload.target_monitor_ids.join(", ")}
                             </div>
                           </div>
 
@@ -1013,8 +1075,105 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
               </div>
             )}
           </div>
+
+          {/* New Feedback Messages (not replies) */}
+          <div
+            className="scrollable"
+            style={{
+              border: "1px solid #ccc",
+              padding: "1rem",
+              borderRadius: "8px",
+              overflowY: "auto",
+              backgroundColor: "white",
+              maxHeight: "300px",
+            }}
+          >
+            <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: "0.5rem", color: "#000" }}>
+              💬 新規フィードバック
+              <span
+                style={{
+                  fontSize: "0.9rem",
+                  fontWeight: "normal",
+                  color: "#555",
+                }}
+              >
+                ({serverState.feedbackMessages.filter(fb => fb.type === "feedback_message" && (!fb.payload.reply_to_message_id || fb.payload.reply_to_message_id === "")).length})
+              </span>
+            </h3>
+            {(() => {
+              const newFeedbacks = serverState.feedbackMessages.filter(
+                fb => fb.type === "feedback_message" && (!fb.payload.reply_to_message_id || fb.payload.reply_to_message_id === "")
+              );
+
+              const feedbackTypeEmoji = {
+                ack: "✓",
+                question: "?",
+                issue: "⚠",
+                info: "ℹ",
+              };
+
+              if (newFeedbacks.length === 0) {
+                return (
+                  <p style={{ color: "#555", fontStyle: "italic" }}>
+                    新規フィードバックはありません
+                  </p>
+                );
+              }
+
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                  {newFeedbacks
+                    .slice()
+                    .reverse()
+                    .map((fb) => {
+                      if (fb.type === "feedback_message") {
+                        return (
+                          <div
+                            key={fb.id}
+                            style={{
+                              padding: "0.75rem",
+                              borderRadius: "6px",
+                              backgroundColor: "#f9fafb",
+                              border: "2px solid #e5e7eb",
+                            }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+                              <strong style={{ color: "#667eea", fontSize: "1rem" }}>
+                                {feedbackTypeEmoji[fb.payload.feedback_type] || "•"} {fb.payload.client_name}
+                              </strong>
+                              <span style={{ fontSize: "0.85rem", color: "#9ca3af" }}>
+                                {formatTimestamp(fb.timestamp)}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: "1rem", color: "#374151", marginBottom: "0.25rem" }}>
+                              {fb.payload.content}
+                            </div>
+                            <div style={{ fontSize: "0.75rem", color: "#9ca3af" }}>
+                              [{fb.payload.feedback_type}]
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })}
+                </div>
+              );
+            })()}
+          </div>
         </div>
       ) : null}
+
+      {/* CSS for spinner animation */}
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .spinner {
+          display: inline-block;
+          animation: spin 0.8s linear infinite;
+        }
+      `}</style>
     </div>
   );
 }

@@ -7,5 +7,5 @@ use serde::{Deserialize, Serialize};
 pub struct ConnectedClientInfo {
     pub client_id: String,
     pub name: String,
-    pub monitor_ids: Vec<u32>,
+    pub monitor_ids: Vec<String>,
 }

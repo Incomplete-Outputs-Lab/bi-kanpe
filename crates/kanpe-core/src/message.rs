@@ -84,8 +84,8 @@ pub enum Message {
 pub struct ClientHelloPayload {
     /// Client's display name
     pub client_name: String,
-    /// Virtual monitor IDs this client is displaying
-    pub display_monitor_ids: Vec<u32>,
+    /// Virtual monitor IDs this client is displaying (e.g., ["A", "B"])
+    pub display_monitor_ids: Vec<String>,
 }
 
 /// Payload for ServerWelcome message
@@ -102,8 +102,8 @@ pub struct ServerWelcomePayload {
 pub struct KanpeMessagePayload {
     /// Message content (text)
     pub content: String,
-    /// Target virtual monitor IDs (0 = all monitors)
-    pub target_monitor_ids: Vec<u32>,
+    /// Target virtual monitor IDs ("ALL" = all monitors, or specific IDs like ["A", "B"])
+    pub target_monitor_ids: Vec<String>,
     /// Message priority
     pub priority: Priority,
 }
@@ -139,7 +139,7 @@ pub struct MonitorAddedPayload {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MonitorRemovedPayload {
     /// ID of the removed monitor
-    pub monitor_id: u32,
+    pub monitor_id: String,
 }
 
 /// Payload for MonitorUpdated message
@@ -152,20 +152,20 @@ pub struct MonitorUpdatedPayload {
 /// Payload for FlashCommand
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FlashCommandPayload {
-    /// Target virtual monitor IDs (0 = all monitors)
-    pub target_monitor_ids: Vec<u32>,
+    /// Target virtual monitor IDs ("ALL" = all monitors, or specific IDs like ["A", "B"])
+    pub target_monitor_ids: Vec<String>,
 }
 
 /// Payload for ClearCommand
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClearCommandPayload {
-    /// Target virtual monitor IDs (0 = all monitors)
-    pub target_monitor_ids: Vec<u32>,
+    /// Target virtual monitor IDs ("ALL" = all monitors, or specific IDs like ["A", "B"])
+    pub target_monitor_ids: Vec<String>,
 }
 
 impl Message {
     /// Create a new ClientHello message
-    pub fn client_hello(client_name: String, display_monitor_ids: Vec<u32>) -> Self {
+    pub fn client_hello(client_name: String, display_monitor_ids: Vec<String>) -> Self {
         Message::ClientHello {
             id: new_id(),
             timestamp: timestamp(),
@@ -191,7 +191,7 @@ impl Message {
     /// Create a new KanpeMessage
     pub fn kanpe_message(
         content: String,
-        target_monitor_ids: Vec<u32>,
+        target_monitor_ids: Vec<String>,
         priority: Priority,
     ) -> Self {
         Message::KanpeMessage {
@@ -259,7 +259,7 @@ impl Message {
     }
 
     /// Create a new MonitorRemoved message
-    pub fn monitor_removed(monitor_id: u32) -> Self {
+    pub fn monitor_removed(monitor_id: String) -> Self {
         Message::MonitorRemoved {
             id: new_id(),
             timestamp: timestamp(),
@@ -277,7 +277,7 @@ impl Message {
     }
 
     /// Create a new FlashCommand message
-    pub fn flash_command(target_monitor_ids: Vec<u32>) -> Self {
+    pub fn flash_command(target_monitor_ids: Vec<String>) -> Self {
         Message::FlashCommand {
             id: new_id(),
             timestamp: timestamp(),
@@ -286,7 +286,7 @@ impl Message {
     }
 
     /// Create a new ClearCommand message
-    pub fn clear_command(target_monitor_ids: Vec<u32>) -> Self {
+    pub fn clear_command(target_monitor_ids: Vec<String>) -> Self {
         Message::ClearCommand {
             id: new_id(),
             timestamp: timestamp(),

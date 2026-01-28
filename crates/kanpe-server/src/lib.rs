@@ -20,7 +20,7 @@ pub mod events {
         ClientConnected {
             client_id: String,
             name: String,
-            monitor_ids: Vec<u32>,
+            monitor_ids: Vec<String>,
         },
         ClientDisconnected {
             client_id: String,
@@ -32,7 +32,7 @@ pub mod events {
             monitor: kanpe_core::types::VirtualMonitor,
         },
         MonitorRemoved {
-            monitor_id: u32,
+            monitor_id: String,
         },
         MonitorUpdated {
             monitor: kanpe_core::types::VirtualMonitor,

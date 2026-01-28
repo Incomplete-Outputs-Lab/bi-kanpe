@@ -23,13 +23,14 @@ export function useServerState() {
 
   useEffect(() => {
     // Listen for server_started event
-    const unlistenServerStarted = listen<{ port: number }>(
+    const unlistenServerStarted = listen<{ port: number; monitors: VirtualMonitor[] }>(
       "server_started",
       (event) => {
         setState((prev) => ({
           ...prev,
           isRunning: true,
           port: event.payload.port,
+          monitors: event.payload.monitors,
         }));
       }
     );
@@ -90,7 +91,7 @@ export function useServerState() {
     );
 
     // Listen for monitor_removed event
-    const unlistenMonitorRemoved = listen<{ monitor_id: number }>(
+    const unlistenMonitorRemoved = listen<{ monitor_id: string }>(
       "monitor_removed",
       (event) => {
         setState((prev) => ({

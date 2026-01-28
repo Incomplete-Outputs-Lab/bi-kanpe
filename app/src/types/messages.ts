@@ -5,7 +5,7 @@ export type FeedbackType = "ack" | "question" | "issue" | "info";
 
 export interface ClientHelloPayload {
   client_name: string;
-  display_monitor_ids: number[];
+  display_monitor_ids: string[];
 }
 
 export interface ServerWelcomePayload {
@@ -15,7 +15,7 @@ export interface ServerWelcomePayload {
 
 export interface KanpeMessagePayload {
   content: string;
-  target_monitor_ids: number[];
+  target_monitor_ids: string[];
   priority: Priority;
 }
 
@@ -27,11 +27,11 @@ export interface FeedbackMessagePayload {
 }
 
 export interface FlashCommandPayload {
-  target_monitor_ids: number[];
+  target_monitor_ids: string[];
 }
 
 export interface ClearCommandPayload {
-  target_monitor_ids: number[];
+  target_monitor_ids: string[];
 }
 
 export type Message =
@@ -85,11 +85,11 @@ export type Message =
 export interface ConnectedClientInfo {
   client_id: string;
   name: string;
-  monitor_ids: number[];
+  monitor_ids: string[];
 }
 
 export interface VirtualMonitor {
-  id: number;
+  id: string;
   name: string;
   description?: string;
   color?: string;

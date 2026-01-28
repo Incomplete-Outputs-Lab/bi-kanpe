@@ -36,12 +36,15 @@ pub async fn start_server(
         .await
         .map_err(|e| format!("Failed to start server: {}", e))?;
 
+    // Get initial monitors
+    let monitors = server.get_monitors().await;
+
     // Store server in state
     *state.server.write().await = Some(server);
 
-    // Emit server_started event
+    // Emit server_started event with monitors
     app_handle
-        .emit("server_started", serde_json::json!({ "port": port }))
+        .emit("server_started", serde_json::json!({ "port": port, "monitors": monitors }))
         .map_err(|e| format!("Failed to emit event: {}", e))?;
 
     // Spawn task to handle server events
@@ -120,7 +123,7 @@ pub async fn stop_server(
 /// Send a Kanpe message to clients
 #[tauri::command]
 pub async fn send_kanpe_message(
-    target_monitor_ids: Vec<u32>,
+    target_monitor_ids: Vec<String>,
     content: String,
     priority: String,
     app_handle: AppHandle,
@@ -196,7 +199,7 @@ pub async fn add_virtual_monitor(
 /// Remove a virtual monitor
 #[tauri::command]
 pub async fn remove_virtual_monitor(
-    monitor_id: u32,
+    monitor_id: String,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let server = state.server.read().await;
@@ -241,7 +244,7 @@ pub async fn get_virtual_monitors(state: State<'_, AppState>) -> Result<Vec<Virt
 /// Send a flash command to clients
 #[tauri::command]
 pub async fn send_flash_command(
-    target_monitor_ids: Vec<u32>,
+    target_monitor_ids: Vec<String>,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let server = state.server.read().await;
@@ -260,7 +263,7 @@ pub async fn send_flash_command(
 /// Send a clear command to clients
 #[tauri::command]
 pub async fn send_clear_command(
-    target_monitor_ids: Vec<u32>,
+    target_monitor_ids: Vec<String>,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let server = state.server.read().await;

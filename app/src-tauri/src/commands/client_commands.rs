@@ -12,7 +12,7 @@ use tokio::sync::mpsc;
 pub async fn connect_to_server(
     server_address: String,
     client_name: String,
-    display_monitor_ids: Vec<u32>,
+    display_monitor_ids: Vec<String>,
     app_handle: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
@@ -161,7 +161,7 @@ pub async fn send_feedback(
 /// Create a popout window for a specific monitor
 #[tauri::command]
 pub async fn create_popout_window(
-    monitor_id: u32,
+    monitor_id: String,
     monitor_name: String,
     app_handle: AppHandle,
 ) -> Result<(), String> {
@@ -187,7 +187,7 @@ pub async fn create_popout_window(
 /// Close a popout window
 #[tauri::command]
 pub async fn close_popout_window(
-    monitor_id: u32,
+    monitor_id: String,
     app_handle: AppHandle,
 ) -> Result<(), String> {
     let label = format!("popout-monitor-{}", monitor_id);
@@ -200,4 +200,13 @@ pub async fn close_popout_window(
     } else {
         Err(format!("Window for monitor {} not found", monitor_id))
     }
+}
+
+/// Get client connection status
+#[tauri::command]
+pub async fn get_client_connection_status(
+    state: State<'_, AppState>,
+) -> Result<bool, String> {
+    let client = state.client.read().await;
+    Ok(client.is_some())
 }

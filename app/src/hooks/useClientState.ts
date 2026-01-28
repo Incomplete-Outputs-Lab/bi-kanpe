@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 import type { Message, VirtualMonitor } from "../types/messages";
 
 export interface ClientState {
@@ -7,27 +8,40 @@ export interface ClientState {
   serverAddress: string | null;
   serverName: string | null;
   messages: Message[];
-  displayMonitorIds: number[];
   availableMonitors: VirtualMonitor[];
   flashTrigger: number;
   clearTrigger: number;
 }
 
-export function useClientState(displayMonitorIds: number[] = []) {
+export function useClientState(displayMonitorIds: string[] = []) {
   const [state, setState] = useState<ClientState>({
     isConnected: false,
     serverAddress: null,
     serverName: null,
     messages: [],
-    displayMonitorIds,
     availableMonitors: [],
     flashTrigger: 0,
     clearTrigger: 0,
   });
 
+  // Check initial connection status (important for popout windows)
   useEffect(() => {
-    setState((prev) => ({ ...prev, displayMonitorIds }));
-  }, [displayMonitorIds]);
+    const checkInitialConnection = async () => {
+      try {
+        const isConnected = await invoke<boolean>("get_client_connection_status");
+        if (isConnected) {
+          setState((prev) => ({
+            ...prev,
+            isConnected: true,
+          }));
+        }
+      } catch (err) {
+        console.error("Failed to check initial connection status:", err);
+      }
+    };
+
+    checkInitialConnection();
+  }, []);
 
   useEffect(() => {
     // Listen for connection_established event
@@ -76,7 +90,7 @@ export function useClientState(displayMonitorIds: number[] = []) {
         if (message.type === "kanpe_message") {
           const targetIds = message.payload.target_monitor_ids;
           const shouldDisplay =
-            targetIds.includes(0) || // 0 means all monitors
+            targetIds.includes("ALL") || // "ALL" means all monitors
             displayMonitorIds.some((id) => targetIds.includes(id));
 
           if (shouldDisplay) {
@@ -114,7 +128,7 @@ export function useClientState(displayMonitorIds: number[] = []) {
     );
 
     // Listen for monitor_removed event
-    const unlistenMonitorRemoved = listen<{ monitor_id: number }>(
+    const unlistenMonitorRemoved = listen<{ monitor_id: string }>(
       "monitor_removed",
       (event) => {
         setState((prev) => ({
@@ -140,12 +154,12 @@ export function useClientState(displayMonitorIds: number[] = []) {
     );
 
     // Listen for flash_received event
-    const unlistenFlash = listen<{ target_monitor_ids: number[] }>(
+    const unlistenFlash = listen<{ target_monitor_ids: string[] }>(
       "flash_received",
       (event) => {
         const targetIds = event.payload.target_monitor_ids;
         const shouldFlash =
-          targetIds.includes(0) || // 0 means all monitors
+          targetIds.includes("ALL") || // "ALL" means all monitors
           displayMonitorIds.some((id) => targetIds.includes(id));
 
         if (shouldFlash) {
@@ -158,12 +172,12 @@ export function useClientState(displayMonitorIds: number[] = []) {
     );
 
     // Listen for clear_received event
-    const unlistenClear = listen<{ target_monitor_ids: number[] }>(
+    const unlistenClear = listen<{ target_monitor_ids: string[] }>(
       "clear_received",
       (event) => {
         const targetIds = event.payload.target_monitor_ids;
         const shouldClear =
-          targetIds.includes(0) || // 0 means all monitors
+          targetIds.includes("ALL") || // "ALL" means all monitors
           displayMonitorIds.some((id) => targetIds.includes(id));
 
         if (shouldClear) {

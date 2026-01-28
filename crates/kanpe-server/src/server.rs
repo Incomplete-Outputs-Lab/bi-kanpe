@@ -132,11 +132,11 @@ impl KanpeServer {
     /// Remove a virtual monitor
     pub async fn remove_monitor(
         &self,
-        monitor_id: u32,
+        monitor_id: String,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        if let Some(_monitor) = self.monitor_manager.remove_monitor(monitor_id).await {
+        if let Some(_monitor) = self.monitor_manager.remove_monitor(monitor_id.clone()).await {
             // Broadcast MonitorRemoved message to all clients
-            let msg = Message::monitor_removed(monitor_id);
+            let msg = Message::monitor_removed(monitor_id.clone());
             broadcast_message(&self.client_manager, &msg).await?;
 
             // Emit event

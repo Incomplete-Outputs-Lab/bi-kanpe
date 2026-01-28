@@ -14,7 +14,7 @@ pub type WsSink = SplitSink<WebSocketStream<TcpStream>, WsMessage>;
 pub struct ClientInfo {
     pub client_id: String,
     pub client_name: String,
-    pub display_monitor_ids: Vec<u32>,
+    pub display_monitor_ids: Vec<String>,
 }
 
 /// Manager for tracking connected clients

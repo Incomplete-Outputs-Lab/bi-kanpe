@@ -10,14 +10,14 @@ type AppMode = "not_selected" | "server" | "client";
 function App() {
   const [mode, setMode] = useState<AppMode>("not_selected");
   const [isPopout, setIsPopout] = useState(false);
-  const [popoutMonitorId, setPopoutMonitorId] = useState<number | null>(null);
+  const [popoutMonitorId, setPopoutMonitorId] = useState<string | null>(null);
   const [popoutMonitorName, setPopoutMonitorName] = useState<string>("");
 
   // Check if this is a popout window
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("popout") === "true") {
-      const monitorId = parseInt(params.get("monitor_id") || "0", 10);
+      const monitorId = params.get("monitor_id") || "";
       setIsPopout(true);
       setPopoutMonitorId(monitorId);
       setPopoutMonitorName(`Monitor ${monitorId}`); // Will be updated with real name from server
