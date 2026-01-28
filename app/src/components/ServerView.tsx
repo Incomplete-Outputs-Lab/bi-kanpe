@@ -1,9 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useServerState } from "../hooks/useServerState";
 import { useTemplates } from "../hooks/useTemplates";
 import { TemplateManager } from "./TemplateManager";
 import type { Priority, ServerTemplate } from "../types/messages";
+
+// Hoist static priority options to avoid recreation on every render
+const PRIORITY_OPTIONS = [
+  { value: "normal", label: "通常", emoji: "📝", color: "#333", bg: "#f0f0f0", desc: "通常のメッセージ" },
+  { value: "high", label: "重要", emoji: "⚠", color: "#ff8800", bg: "#ffeecc", desc: "注意が必要" },
+  { value: "urgent", label: "緊急", emoji: "🚨", color: "#ff0000", bg: "#ffcccc", desc: "即座の対応が必要" },
+] as const;
 
 interface ServerViewProps {
   onBackToMenu: () => void;
@@ -44,6 +51,45 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
 
   // Get monitors from server state
   const availableMonitors = serverState.monitors;
+
+  // Memoize feedback type emoji mapping
+  const feedbackTypeEmoji = useMemo(() => ({
+    ack: "✓",
+    question: "?",
+    issue: "⚠",
+    info: "ℹ",
+  }), []);
+
+  // Memoize priority color mapping
+  const priorityColor = useMemo(() => ({
+    urgent: "#ff0000",
+    high: "#ff8800",
+    normal: "#333",
+  }), []);
+
+  // Memoize new feedbacks (not replies to messages)
+  const newFeedbacks = useMemo(() => {
+    return serverState.feedbackMessages.filter(
+      fb => fb.type === "feedback_message" && !fb.payload.reply_to_message_id
+    );
+  }, [serverState.feedbackMessages]);
+
+  // Memoize messages with their associated feedbacks
+  const messagesWithFeedback = useMemo(() => {
+    return serverState.sentMessages
+      .slice()
+      .reverse()
+      .map((msg) => {
+        if (msg.type !== "kanpe_message") return null;
+
+        const feedbacks = serverState.feedbackMessages.filter(
+          (fb) => fb.type === "feedback_message" && fb.payload.reply_to_message_id === msg.id
+        );
+
+        return { msg, feedbacks };
+      })
+      .filter(Boolean);
+  }, [serverState.sentMessages, serverState.feedbackMessages]);
 
   const handleStartServer = async () => {
     try {
@@ -708,11 +754,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                   優先度:
                 </label>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
-                  {[
-                    { value: "normal", label: "通常", emoji: "📝", color: "#333", bg: "#f0f0f0", desc: "通常のメッセージ" },
-                    { value: "high", label: "重要", emoji: "⚠", color: "#ff8800", bg: "#ffeecc", desc: "注意が必要" },
-                    { value: "urgent", label: "緊急", emoji: "🚨", color: "#ff0000", bg: "#ffcccc", desc: "即座の対応が必要" },
-                  ].map((p) => (
+                  {PRIORITY_OPTIONS.map((p) => (
                     <button
                       key={p.value}
                       onClick={() => setPriority(p.value as Priority)}
@@ -958,30 +1000,13 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
               </p>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                {serverState.sentMessages
-                  .slice()
-                  .reverse()
-                  .map((msg) => {
-                    if (msg.type === "kanpe_message") {
-                      // Find all feedback for this message
-                      const feedbacks = serverState.feedbackMessages.filter(
-                        (fb) => fb.type === "feedback_message" && fb.payload.reply_to_message_id === msg.id
-                      );
+                {messagesWithFeedback.map((item) => {
+                  if (!item) return null;
+                  const { msg, feedbacks } = item;
 
-                      const feedbackTypeEmoji = {
-                        ack: "✓",
-                        question: "?",
-                        issue: "⚠",
-                        info: "ℹ",
-                      };
+                  const msgPriorityColor = priorityColor[msg.payload.priority] || "#333";
 
-                      const priorityColor = {
-                        urgent: "#ff0000",
-                        high: "#ff8800",
-                        normal: "#333",
-                      }[msg.payload.priority] || "#333";
-
-                      return (
+                  return (
                         <div
                           key={msg.id}
                           style={{
@@ -995,7 +1020,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                           <div style={{ marginBottom: "0.75rem" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
                               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                <span style={{ fontSize: "1.1rem", fontWeight: "600", color: priorityColor }}>
+                                <span style={{ fontSize: "1.1rem", fontWeight: "600", color: msgPriorityColor }}>
                                   📢 {msg.payload.content}
                                 </span>
                                 <span
@@ -1003,7 +1028,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                                     fontSize: "0.75rem",
                                     padding: "0.125rem 0.5rem",
                                     borderRadius: "3px",
-                                    backgroundColor: priorityColor,
+                                    backgroundColor: msgPriorityColor,
                                     color: "white",
                                     fontWeight: "600",
                                   }}
@@ -1069,9 +1094,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                           </div>
                         </div>
                       );
-                    }
-                    return null;
-                  })}
+                })}
               </div>
             )}
           </div>
@@ -1097,68 +1120,51 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                   color: "#555",
                 }}
               >
-                ({serverState.feedbackMessages.filter(fb => fb.type === "feedback_message" && (!fb.payload.reply_to_message_id || fb.payload.reply_to_message_id === "")).length})
+                ({newFeedbacks.length})
               </span>
             </h3>
-            {(() => {
-              const newFeedbacks = serverState.feedbackMessages.filter(
-                fb => fb.type === "feedback_message" && (!fb.payload.reply_to_message_id || fb.payload.reply_to_message_id === "")
-              );
-
-              const feedbackTypeEmoji = {
-                ack: "✓",
-                question: "?",
-                issue: "⚠",
-                info: "ℹ",
-              };
-
-              if (newFeedbacks.length === 0) {
-                return (
-                  <p style={{ color: "#555", fontStyle: "italic" }}>
-                    新規フィードバックはありません
-                  </p>
-                );
-              }
-
-              return (
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                  {newFeedbacks
-                    .slice()
-                    .reverse()
-                    .map((fb) => {
-                      if (fb.type === "feedback_message") {
-                        return (
-                          <div
-                            key={fb.id}
-                            style={{
-                              padding: "0.75rem",
-                              borderRadius: "6px",
-                              backgroundColor: "#f9fafb",
-                              border: "2px solid #e5e7eb",
-                            }}
-                          >
-                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
-                              <strong style={{ color: "#667eea", fontSize: "1rem" }}>
-                                {feedbackTypeEmoji[fb.payload.feedback_type] || "•"} {fb.payload.client_name}
-                              </strong>
-                              <span style={{ fontSize: "0.85rem", color: "#9ca3af" }}>
-                                {formatTimestamp(fb.timestamp)}
-                              </span>
-                            </div>
-                            <div style={{ fontSize: "1rem", color: "#374151", marginBottom: "0.25rem" }}>
-                              {fb.payload.content}
-                            </div>
-                            <div style={{ fontSize: "0.75rem", color: "#9ca3af" }}>
-                              [{fb.payload.feedback_type}]
-                            </div>
+            {newFeedbacks.length === 0 ? (
+              <p style={{ color: "#555", fontStyle: "italic" }}>
+                新規フィードバックはありません
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                {newFeedbacks
+                  .slice()
+                  .reverse()
+                  .map((fb) => {
+                    if (fb.type === "feedback_message") {
+                      return (
+                        <div
+                          key={fb.id}
+                          style={{
+                            padding: "0.75rem",
+                            borderRadius: "6px",
+                            backgroundColor: "#f9fafb",
+                            border: "2px solid #e5e7eb",
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+                            <strong style={{ color: "#667eea", fontSize: "1rem" }}>
+                              {feedbackTypeEmoji[fb.payload.feedback_type] || "•"} {fb.payload.client_name}
+                            </strong>
+                            <span style={{ fontSize: "0.85rem", color: "#9ca3af" }}>
+                              {formatTimestamp(fb.timestamp)}
+                            </span>
                           </div>
-                        );
-                      }
-                      return null;
-                    })}
-                </div>
-              );
-            })()}
+                          <div style={{ fontSize: "1rem", color: "#374151", marginBottom: "0.25rem" }}>
+                            {fb.payload.content}
+                          </div>
+                          <div style={{ fontSize: "0.75rem", color: "#9ca3af" }}>
+                            [{fb.payload.feedback_type}]
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })}
+              </div>
+            )}
           </div>
         </div>
       ) : null}

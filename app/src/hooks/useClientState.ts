@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import type { Message, VirtualMonitor } from "../types/messages";
@@ -15,6 +15,10 @@ export interface ClientState {
 }
 
 export function useClientState(displayMonitorIds: string[] = []) {
+  // Stabilize displayMonitorIds with a string key to avoid effect re-runs on array reference changes
+  const monitorIdKey = useMemo(() => displayMonitorIds.join(','), [displayMonitorIds.join(',')]);
+  const stableMonitorIds = useMemo(() => displayMonitorIds, [monitorIdKey]);
+
   const [state, setState] = useState<ClientState>({
     isConnected: false,
     serverAddress: null,
@@ -95,7 +99,7 @@ export function useClientState(displayMonitorIds: string[] = []) {
           const targetIds = message.payload.target_monitor_ids;
           const shouldDisplay =
             targetIds.includes("ALL") || // "ALL" means all monitors
-            displayMonitorIds.some((id) => targetIds.includes(id));
+            stableMonitorIds.some((id) => targetIds.includes(id));
 
           if (shouldDisplay) {
             setState((prev) => ({
@@ -164,7 +168,7 @@ export function useClientState(displayMonitorIds: string[] = []) {
         const targetIds = event.payload.target_monitor_ids;
         const shouldFlash =
           targetIds.includes("ALL") || // "ALL" means all monitors
-          displayMonitorIds.some((id) => targetIds.includes(id));
+          stableMonitorIds.some((id) => targetIds.includes(id));
 
         if (shouldFlash) {
           setState((prev) => ({
@@ -182,7 +186,7 @@ export function useClientState(displayMonitorIds: string[] = []) {
         const targetIds = event.payload.target_monitor_ids;
         const shouldClear =
           targetIds.includes("ALL") || // "ALL" means all monitors
-          displayMonitorIds.some((id) => targetIds.includes(id));
+          stableMonitorIds.some((id) => targetIds.includes(id));
 
         if (shouldClear) {
           setState((prev) => ({
@@ -211,7 +215,7 @@ export function useClientState(displayMonitorIds: string[] = []) {
         unlisteners.forEach((fn) => fn());
       });
     };
-  }, [displayMonitorIds]);
+  }, [monitorIdKey, stableMonitorIds]);
 
   return state;
 }

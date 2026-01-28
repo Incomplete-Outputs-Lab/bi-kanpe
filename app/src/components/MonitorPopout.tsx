@@ -1,9 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useClientState } from "../hooks/useClientState";
 import { useTemplates } from "../hooks/useTemplates";
 import { TemplateManager } from "./TemplateManager";
 import type { ClientTemplate } from "../types/messages";
+
+// Hoist feedback type colors to avoid recreation on every render
+const FEEDBACK_TYPE_COLORS = {
+  ack: { bg: "#22c55e", label: "✓ 了解" },
+  question: { bg: "#3b82f6", label: "? 質問" },
+  issue: { bg: "#ef4444", label: "⚠ 問題" },
+  info: { bg: "#6b7280", label: "ℹ 情報" },
+} as const;
 
 interface MonitorPopoutProps {
   monitorId: string;
@@ -44,16 +52,18 @@ export default function MonitorPopout({
     }
   }, [clientState.flashTrigger]);
 
-  // Get the most recent message for this monitor
-  const currentMessage = clientState.messages
-    .filter((msg) => {
-      if (msg.type === "kanpe_message") {
-        const targetIds = msg.payload.target_monitor_ids;
-        return targetIds.includes("ALL") || targetIds.includes(monitorId);
-      }
-      return false;
-    })
-    .slice(-1)[0];
+  // Memoize the most recent message for this monitor
+  const currentMessage = useMemo(() => {
+    return clientState.messages
+      .filter((msg) => {
+        if (msg.type === "kanpe_message") {
+          const targetIds = msg.payload.target_monitor_ids;
+          return targetIds.includes("ALL") || targetIds.includes(monitorId);
+        }
+        return false;
+      })
+      .slice(-1)[0];
+  }, [clientState.messages, monitorId]);
 
   // Auto-switch tabs based on message availability
   useEffect(() => {
@@ -397,13 +407,7 @@ export default function MonitorPopout({
                     </h4>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "0.75rem" }}>
                       {templates.config.client_templates.map((template) => {
-                        const typeColors = {
-                          ack: { bg: "#22c55e", label: "✓ 了解" },
-                          question: { bg: "#3b82f6", label: "? 質問" },
-                          issue: { bg: "#ef4444", label: "⚠ 問題" },
-                          info: { bg: "#6b7280", label: "ℹ 情報" },
-                        };
-                        const typeInfo = typeColors[template.feedback_type];
+                        const typeInfo = FEEDBACK_TYPE_COLORS[template.feedback_type];
 
                         return (
                           <button
@@ -484,13 +488,7 @@ export default function MonitorPopout({
                     </h4>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "0.75rem" }}>
                       {templates.config.client_templates.map((template) => {
-                        const typeColors = {
-                          ack: { bg: "#22c55e", label: "✓ 了解" },
-                          question: { bg: "#3b82f6", label: "? 質問" },
-                          issue: { bg: "#ef4444", label: "⚠ 問題" },
-                          info: { bg: "#6b7280", label: "ℹ 情報" },
-                        };
-                        const typeInfo = typeColors[template.feedback_type];
+                        const typeInfo = FEEDBACK_TYPE_COLORS[template.feedback_type];
 
                         return (
                           <button
