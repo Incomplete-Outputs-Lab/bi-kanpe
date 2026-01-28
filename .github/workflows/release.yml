@@ -45,6 +45,9 @@ jobs:
         with:
           node-version: lts/*
 
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
+
       - name: Install frontend dependencies
         run: |
           cd app
