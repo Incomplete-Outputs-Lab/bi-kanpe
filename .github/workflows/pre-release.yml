@@ -65,10 +65,11 @@ jobs:
           cd streamdeck-plugin
           bun run build
 
-      - name: Create StreamDeck plugin distribution directory
+      - name: Prepare StreamDeck plugin for distribution
         shell: bash
         run: |
-          mkdir -p streamdeck-plugin/dist
+          mkdir -p dist
+          cp -r streamdeck-plugin/com.misei.bi-kanpe.sdPlugin ./
 
       - name: Export StreamDeck plugin using Distribution Tool
         if: matrix.platform == 'windows-latest' || matrix.platform == 'macos-latest'
@@ -76,7 +77,6 @@ jobs:
         with:
           input: com.misei.bi-kanpe.sdPlugin
           output: dist
-          working-directory: streamdeck-plugin
 
       - name: Set build environment variables
         shell: bash
@@ -168,4 +168,4 @@ jobs:
           includeUpdaterJson: true
           args: ${{ matrix.args }}
           # Include StreamDeck plugin as release asset (only from Windows build to avoid duplicates)
-          artifactPaths: ${{ matrix.platform == 'windows-latest' && './streamdeck-plugin/dist/com.misei.bi-kanpe.streamDeckPlugin' || '' }}
+          artifactPaths: ${{ matrix.platform == 'windows-latest' && './dist/com.misei.bi-kanpe.streamDeckPlugin' || '' }}
