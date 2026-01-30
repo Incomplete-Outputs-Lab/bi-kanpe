@@ -39,6 +39,10 @@ pub fn run() {
             commands::add_client_template,
             commands::update_client_template,
             commands::delete_client_template,
+            // StreamDeck commands
+            commands::start_streamdeck_server,
+            commands::stop_streamdeck_server,
+            commands::get_streamdeck_status,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
@@ -46,6 +50,7 @@ pub fn run() {
                 let state = window.app_handle().state::<AppState>();
                 let client_arc = state.client.clone();
                 let server_arc = state.server.clone();
+                let streamdeck_arc = state.streamdeck_server.clone();
                 let mode_arc = state.mode.clone();
 
                 // Cleanup client or server on window close
@@ -63,6 +68,13 @@ pub fn run() {
                         let _ = s.stop().await;
                     }
                     drop(server);
+
+                    // Check and cleanup StreamDeck server
+                    let mut streamdeck = streamdeck_arc.write().await;
+                    if let Some(s) = streamdeck.take() {
+                        let _ = s.shutdown().await;
+                    }
+                    drop(streamdeck);
 
                     // Reset mode
                     *mode_arc.write().await = AppMode::NotSelected;

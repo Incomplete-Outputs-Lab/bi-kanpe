@@ -47,11 +47,13 @@ jobs:
 
       - name: Install Bun
         uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
 
       - name: Install frontend dependencies
         run: |
           cd app
-          npm install
+          bun install
 
       - name: Set build environment variables
         shell: bash

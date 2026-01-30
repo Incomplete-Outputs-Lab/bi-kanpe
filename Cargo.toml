@@ -4,6 +4,7 @@ members = [
     "crates/kanpe-core",
     "crates/kanpe-server",
     "crates/kanpe-client",
+    "crates/kanpe-streamdeck-server",
 ]
 resolver = "2"
 
@@ -25,3 +26,4 @@ thiserror = "2.0"
 kanpe-core = { path = "crates/kanpe-core" }
 kanpe-server = { path = "crates/kanpe-server" }
 kanpe-client = { path = "crates/kanpe-client" }
+kanpe-streamdeck-server = { path = "crates/kanpe-streamdeck-server" }

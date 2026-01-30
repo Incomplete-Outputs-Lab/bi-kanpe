@@ -2,7 +2,7 @@
 
 use crate::events::ClientEvent;
 use futures_util::{SinkExt, StreamExt};
-use kanpe_core::Message;
+use kanpe_core::{Message, message::KanpeMessagePayload, types::{VirtualMonitor, timestamp}};
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
 use tokio_tungstenite::{connect_async, tungstenite::Message as WsMessage};
@@ -19,6 +19,9 @@ pub struct KanpeClient {
     sink: Arc<RwLock<Option<WsSink>>>,
     event_tx: mpsc::UnboundedSender<ClientEvent>,
     disconnect_tx: Option<mpsc::Sender<()>>,
+    client_name: Arc<RwLock<String>>,
+    latest_message: Arc<RwLock<Option<(String, KanpeMessagePayload)>>>,
+    monitors: Arc<RwLock<Vec<VirtualMonitor>>>,
 }
 
 impl KanpeClient {
@@ -28,6 +31,9 @@ impl KanpeClient {
             sink: Arc::new(RwLock::new(None)),
             event_tx,
             disconnect_tx: None,
+            client_name: Arc::new(RwLock::new(String::new())),
+            latest_message: Arc::new(RwLock::new(None)),
+            monitors: Arc::new(RwLock::new(Vec::new())),
         }
     }
 
@@ -57,6 +63,9 @@ impl KanpeClient {
         // Store sink
         *self.sink.write().await = Some(sink);
 
+        // Store client name
+        *self.client_name.write().await = client_name.clone();
+
         // Send ClientHello
         let hello = Message::client_hello(client_name, display_monitor_ids);
         self.send_internal(&hello).await?;
@@ -69,6 +78,8 @@ impl KanpeClient {
         let event_tx = self.event_tx.clone();
         let sink_for_handler = self.sink.clone();
         let server_addr = server_address.to_string();
+        let latest_message = self.latest_message.clone();
+        let monitors = self.monitors.clone();
 
         tokio::spawn(async move {
             loop {
@@ -87,10 +98,20 @@ impl KanpeClient {
                                                     server_address: server_addr.clone(),
                                                 });
                                             }
-                                            Message::KanpeMessage { .. } => {
-                                                let _ = event_tx.send(ClientEvent::MessageReceived { message });
+                                            Message::KanpeMessage { id, payload, .. } => {
+                                                // Store latest message with ID
+                                                *latest_message.write().await = Some((id.clone(), payload.clone()));
+                                                let _ = event_tx.send(ClientEvent::MessageReceived { 
+                                                    message: Message::KanpeMessage { 
+                                                        id,
+                                                        timestamp: timestamp(),
+                                                        payload 
+                                                    } 
+                                                });
                                             }
                                             Message::MonitorListSync { payload, .. } => {
+                                                // Store monitors
+                                                *monitors.write().await = payload.monitors.clone();
                                                 let _ = event_tx.send(ClientEvent::MonitorListReceived {
                                                     monitors: payload.monitors,
                                                 });
@@ -216,5 +237,37 @@ impl KanpeClient {
     /// Check if connected
     pub async fn is_connected(&self) -> bool {
         self.sink.read().await.is_some()
+    }
+
+    /// Get the client name
+    pub fn get_client_name(&self) -> Option<String> {
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let name = self.client_name.read().await;
+                if name.is_empty() {
+                    None
+                } else {
+                    Some(name.clone())
+                }
+            })
+        })
+    }
+
+    /// Get the latest received message with its ID
+    pub fn get_latest_message(&self) -> Option<(String, KanpeMessagePayload)> {
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                self.latest_message.read().await.clone()
+            })
+        })
+    }
+
+    /// Get the list of monitors
+    pub fn get_monitors(&self) -> Vec<VirtualMonitor> {
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                self.monitors.read().await.clone()
+            })
+        })
     }
 }

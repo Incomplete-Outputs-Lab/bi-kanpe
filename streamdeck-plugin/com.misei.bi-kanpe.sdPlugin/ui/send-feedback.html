@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Send Feedback Settings</title>
+	
+	<script src="https://sdpi-components.dev/releases/v3/sdpi-components.js"></script>
+</head>
+<body>
+	<sdpi-item label="Server Address">
+		<sdpi-textfield 
+			setting="serverAddress" 
+			placeholder="localhost:9877"
+		></sdpi-textfield>
+	</sdpi-item>
+
+	<sdpi-item label="Feedback Type">
+		<sdpi-select setting="feedbackType">
+			<option value="Info" selected>ℹ️ 情報 (Information)</option>
+			<option value="Ack">✓ 了解 (Acknowledgment)</option>
+			<option value="Question">❓ 質問 (Question)</option>
+			<option value="Issue">⚠️ 問題 (Issue)</option>
+		</sdpi-select>
+	</sdpi-item>
+
+	<sdpi-item label="Message Content">
+		<sdpi-textarea 
+			setting="content" 
+			placeholder="Enter your feedback message..."
+			rows="4"
+		></sdpi-textarea>
+	</sdpi-item>
+
+	<sdpi-item label="Setup">
+		<details class="sdpi-item-info">
+			<summary>Setup Instructions</summary>
+			<ol>
+				<li>Launch Bi-Kanpe in Caster Mode</li>
+				<li>Connect to the director's server</li>
+				<li>Enable StreamDeck server in the app</li>
+				<li>Enter the server address (default: localhost:9877)</li>
+				<li>Configure your feedback type and message</li>
+				<li>Press the button to send feedback</li>
+			</ol>
+		</details>
+	</sdpi-item>
+
+</body>
+</html>
