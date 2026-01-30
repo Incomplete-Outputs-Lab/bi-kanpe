@@ -71,16 +71,15 @@ jobs:
       - name: Prepare StreamDeck plugin for distribution
         shell: bash
         run: |
-          mkdir -p streamdeck-dist/output
-          cp -r streamdeck-plugin/com.misei.bi-kanpe.sdPlugin streamdeck-dist/
+          mkdir -p dist
+          cp -r streamdeck-plugin/com.misei.bi-kanpe.sdPlugin ./
 
       - name: Test StreamDeck plugin distribution build
         if: matrix.platform == 'windows-latest' || matrix.platform == 'macos-latest'
         uses: AdamCarballo/streamdeck-distribution-tool@v1
         with:
           input: com.misei.bi-kanpe.sdPlugin
-          output: output
-          working-directory: streamdeck-dist
+          output: dist
 
       - name: Set build environment variables
         shell: bash
