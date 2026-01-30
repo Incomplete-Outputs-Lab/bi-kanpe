@@ -68,6 +68,18 @@ jobs:
           cd streamdeck-plugin
           streamdeck validate com.misei.bi-kanpe.sdPlugin
 
+      - name: Create StreamDeck plugin distribution directory
+        shell: bash
+        run: |
+          mkdir -p streamdeck-plugin/dist
+
+      - name: Test StreamDeck plugin distribution build
+        if: matrix.platform == 'windows-latest' || matrix.platform == 'macos-latest'
+        uses: AdamCarballo/streamdeck-distribution-tool@v1
+        with:
+          input: streamdeck-plugin/com.misei.bi-kanpe.sdPlugin
+          output: streamdeck-plugin/dist
+
       - name: Set build environment variables
         shell: bash
         run: |

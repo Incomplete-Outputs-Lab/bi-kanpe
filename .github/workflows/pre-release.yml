@@ -74,9 +74,8 @@ jobs:
         if: matrix.platform == 'windows-latest' || matrix.platform == 'macos-latest'
         uses: AdamCarballo/streamdeck-distribution-tool@v1
         with:
-          input: com.misei.bi-kanpe.sdPlugin
-          output: dist
-          working-directory: streamdeck-plugin
+          input: streamdeck-plugin/com.misei.bi-kanpe.sdPlugin
+          output: streamdeck-plugin/dist
 
       - name: Set build environment variables
         shell: bash
