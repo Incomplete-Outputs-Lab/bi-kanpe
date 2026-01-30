@@ -1,13 +1,12 @@
 //! Client connection management
 
+use axum::extract::ws::Message as WsMessage;
 use futures_util::stream::SplitSink;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::net::TcpStream;
 use tokio::sync::RwLock;
-use tokio_tungstenite::{tungstenite::Message as WsMessage, WebSocketStream};
 
-pub type WsSink = SplitSink<WebSocketStream<TcpStream>, WsMessage>;
+pub type WsSink = SplitSink<axum::extract::ws::WebSocket, WsMessage>;
 
 /// Information about a connected client
 #[derive(Debug, Clone)]

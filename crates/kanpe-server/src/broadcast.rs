@@ -1,9 +1,9 @@
 //! Broadcasting logic for sending messages to clients
 
 use crate::client_manager::ClientManager;
+use axum::extract::ws::Message as WsMessage;
 use futures_util::SinkExt;
 use kanpe_core::Message;
-use tokio_tungstenite::tungstenite::Message as WsMessage;
 
 /// Broadcast a message to all connected clients
 pub async fn broadcast_message(

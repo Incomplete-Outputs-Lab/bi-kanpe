@@ -38,11 +38,17 @@ impl KanpeClient {
         client_name: String,
         display_monitor_ids: Vec<String>,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // Connect to WebSocket
+        // Connect to WebSocket at /ws endpoint
         let url = if server_address.starts_with("ws://") || server_address.starts_with("wss://") {
-            server_address.to_string()
+            // If already has protocol, append /ws if not present
+            if server_address.ends_with("/ws") {
+                server_address.to_string()
+            } else {
+                format!("{}/ws", server_address.trim_end_matches('/'))
+            }
         } else {
-            format!("ws://{}", server_address)
+            // Add protocol and /ws endpoint
+            format!("ws://{}/ws", server_address)
         };
 
         let (ws_stream, _) = connect_async(&url).await?;

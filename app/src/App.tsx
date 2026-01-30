@@ -4,6 +4,8 @@ import { ServerView } from "./components/ServerView";
 import { ClientView } from "./components/ClientView";
 import MonitorPopout from "./components/MonitorPopout";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { ToastProvider } from "./contexts/ToastContext";
+import { ToastContainer } from "./components/Toast";
 import "./App.css";
 
 type AppMode = "not_selected" | "server" | "client";
@@ -37,7 +39,10 @@ function App() {
   if (isPopout && popoutMonitorId !== null) {
     return (
       <ThemeProvider>
-        <MonitorPopout monitorId={popoutMonitorId} monitorName={popoutMonitorName} />
+        <ToastProvider>
+          <MonitorPopout monitorId={popoutMonitorId} monitorName={popoutMonitorName} />
+          <ToastContainer />
+        </ToastProvider>
       </ThemeProvider>
     );
   }
@@ -45,11 +50,14 @@ function App() {
   // Render normal app UI
   return (
     <ThemeProvider>
-      <main>
-        {mode === "not_selected" && <ModeSelector onSelectMode={handleSelectMode} />}
-        {mode === "server" && <ServerView onBackToMenu={handleBackToModeSelection} />}
-        {mode === "client" && <ClientView onBackToMenu={handleBackToModeSelection} />}
-      </main>
+      <ToastProvider>
+        <main>
+          {mode === "not_selected" && <ModeSelector onSelectMode={handleSelectMode} />}
+          {mode === "server" && <ServerView onBackToMenu={handleBackToModeSelection} />}
+          {mode === "client" && <ClientView onBackToMenu={handleBackToModeSelection} />}
+        </main>
+        <ToastContainer />
+      </ToastProvider>
     </ThemeProvider>
   );
 }

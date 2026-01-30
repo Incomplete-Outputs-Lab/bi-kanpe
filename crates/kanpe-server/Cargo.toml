@@ -6,9 +6,13 @@ edition = "2024"
 [dependencies]
 kanpe-core = { workspace = true }
 tokio = { workspace = true }
-tokio-tungstenite = { workspace = true }
 futures-util = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
+axum = { version = "0.7", features = ["ws"] }
+tower-http = { version = "0.6", features = ["cors"] }
+rust-embed = "8.0"
+mime_guess = "2.0"
+tower = "0.5"

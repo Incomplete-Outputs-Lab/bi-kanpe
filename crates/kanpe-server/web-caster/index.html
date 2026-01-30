@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Bi-Kanpe Web Caster</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <!-- Connection Screen -->
+    <div id="connection-screen" class="screen">
+        <div class="connection-container">
+            <h1>📱 Bi-Kanpe Web Caster</h1>
+            <p class="subtitle">ブラウザからキャスターモードに接続</p>
+            
+            <div class="form-group">
+                <label for="client-name">クライアント名</label>
+                <input type="text" id="client-name" placeholder="例: スマホA" />
+            </div>
+            
+            <div class="form-group">
+                <label for="monitor-select">表示するモニター</label>
+                <div id="monitor-list" class="monitor-grid"></div>
+            </div>
+            
+            <button id="connect-btn" class="primary-btn">接続</button>
+            
+            <div id="connection-error" class="error-message" style="display: none;"></div>
+        </div>
+    </div>
+    
+    <!-- Main Display Screen -->
+    <div id="display-screen" class="screen" style="display: none;">
+        <!-- Controls (top-left) -->
+        <div class="controls">
+            <div class="font-size-controls">
+                <button id="font-decrease">A-</button>
+                <span id="font-size-display">4rem</span>
+                <button id="font-increase">A+</button>
+            </div>
+            <button id="theme-toggle" class="theme-btn">🌙</button>
+            <button id="disconnect-btn" class="disconnect-btn">🔌 切断</button>
+        </div>
+        
+        <!-- Feedback Toggle Button (top-right) -->
+        <button id="feedback-toggle" class="feedback-toggle-btn">💬 フィードバック</button>
+        
+        <!-- Main Message Display -->
+        <div id="message-display" class="message-display">
+            <div id="waiting-state" class="waiting-state">
+                <div class="emoji">💤</div>
+                <p class="waiting-text">待機中...</p>
+                <p id="monitor-name" class="monitor-name">● モニター</p>
+            </div>
+            <div id="message-content" style="display: none;">
+                <div id="message-text" class="message-text"></div>
+                <div id="priority-badge" class="priority-badge"></div>
+            </div>
+        </div>
+        
+        <!-- Feedback Panel (sliding from bottom) -->
+        <div id="feedback-panel" class="feedback-panel">
+            <!-- Tabs -->
+            <div class="feedback-tabs">
+                <button class="feedback-tab active" data-tab="reply">📝 メッセージへの返信</button>
+                <button class="feedback-tab" data-tab="new">✉️ 新規メッセージ</button>
+            </div>
+            
+            <!-- Tab Content -->
+            <div class="feedback-content">
+                <div id="reply-tab" class="tab-content active">
+                    <div id="reply-disabled" class="feedback-info" style="display: none;">
+                        ⚠ メッセージを受信していないため、返信できません。
+                    </div>
+                    <div id="reply-buttons" class="feedback-buttons"></div>
+                </div>
+                <div id="new-tab" class="tab-content">
+                    <div id="new-buttons" class="feedback-buttons"></div>
+                </div>
+            </div>
+            
+            <!-- Status Message -->
+            <div id="feedback-status" class="feedback-status" style="display: none;">
+                ✓ 送信完了
+            </div>
+        </div>
+    </div>
+    
+    <script src="/app.js"></script>
+</body>
+</html>

@@ -1,19 +1,37 @@
-//! WebSocket server implementation
+//! HTTP + WebSocket server implementation
 
 use crate::broadcast::broadcast_message;
 use crate::client_manager::{ClientInfo, ClientManager};
 use crate::events::ServerEvent;
 use crate::monitor_manager::MonitorManager;
+use axum::{
+    extract::{ws::WebSocketUpgrade, State},
+    response::{Html, IntoResponse, Response},
+    routing::get,
+    Router,
+};
+use axum::extract::ws::{Message as WsMessage, WebSocket};
 use futures_util::{SinkExt, StreamExt};
 use kanpe_core::Message;
-use std::net::SocketAddr;
+use rust_embed::RustEmbed;
 use std::sync::Arc;
-use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{mpsc, RwLock};
 use tokio::time::{interval, Duration};
-use tokio_tungstenite::{accept_async, tungstenite::Message as WsMessage};
+use tower_http::cors::CorsLayer;
 
-/// WebSocket server for Kanpe director mode
+#[derive(RustEmbed)]
+#[folder = "web-caster/"]
+struct WebAssets;
+
+/// Shared application state
+#[derive(Clone)]
+struct AppState {
+    client_manager: Arc<ClientManager>,
+    monitor_manager: Arc<MonitorManager>,
+    event_tx: mpsc::UnboundedSender<ServerEvent>,
+}
+
+/// HTTP + WebSocket server for Kanpe director mode
 pub struct KanpeServer {
     client_manager: Arc<ClientManager>,
     monitor_manager: Arc<MonitorManager>,
@@ -32,40 +50,39 @@ impl KanpeServer {
         }
     }
 
-    /// Start the WebSocket server on the specified port
+    /// Start the HTTP + WebSocket server on the specified port
     pub async fn start(&mut self, port: u16) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // Initialize default monitors
         self.monitor_manager.initialize_default_monitors().await;
 
-        let addr: SocketAddr = format!("0.0.0.0:{}", port).parse()?;
-        let listener = TcpListener::bind(&addr).await?;
+        let state = AppState {
+            client_manager: self.client_manager.clone(),
+            monitor_manager: self.monitor_manager.clone(),
+            event_tx: self.event_tx.clone(),
+        };
+
+        // Build router with static file serving and WebSocket endpoint
+        let app = Router::new()
+            .route("/", get(serve_index))
+            .route("/styles.css", get(serve_css))
+            .route("/app.js", get(serve_js))
+            .route("/ws", get(websocket_handler))
+            .layer(CorsLayer::permissive())
+            .with_state(state);
+
+        let addr = format!("0.0.0.0:{}", port);
+        let listener = tokio::net::TcpListener::bind(&addr).await?;
 
         let (shutdown_tx, mut shutdown_rx) = mpsc::channel::<()>(1);
         self.shutdown_tx = Some(shutdown_tx);
 
-        let client_manager = self.client_manager.clone();
-        let monitor_manager = self.monitor_manager.clone();
-        let event_tx = self.event_tx.clone();
-
         tokio::spawn(async move {
-            loop {
-                tokio::select! {
-                    Ok((stream, peer_addr)) = listener.accept() => {
-                        let client_manager = client_manager.clone();
-                        let monitor_manager = monitor_manager.clone();
-                        let event_tx = event_tx.clone();
-
-                        tokio::spawn(async move {
-                            if let Err(e) = handle_connection(stream, peer_addr, client_manager, monitor_manager, event_tx).await {
-                                eprintln!("Error handling connection from {}: {}", peer_addr, e);
-                            }
-                        });
-                    }
-                    _ = shutdown_rx.recv() => {
-                        break;
-                    }
-                }
-            }
+            axum::serve(listener, app)
+                .with_graceful_shutdown(async move {
+                    shutdown_rx.recv().await;
+                })
+                .await
+                .expect("Server error");
         });
 
         Ok(())
@@ -153,16 +170,49 @@ impl KanpeServer {
     }
 }
 
-/// Handle a single WebSocket connection
-async fn handle_connection(
-    stream: TcpStream,
-    peer_addr: SocketAddr,
-    client_manager: Arc<ClientManager>,
-    monitor_manager: Arc<MonitorManager>,
-    event_tx: mpsc::UnboundedSender<ServerEvent>,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let ws_stream = accept_async(stream).await?;
-    let (sink, mut stream) = ws_stream.split();
+/// Serve index.html
+async fn serve_index() -> Response {
+    serve_static_file("index.html", "text/html")
+}
+
+/// Serve styles.css
+async fn serve_css() -> Response {
+    serve_static_file("styles.css", "text/css")
+}
+
+/// Serve app.js
+async fn serve_js() -> Response {
+    serve_static_file("app.js", "application/javascript")
+}
+
+/// Generic static file server
+fn serve_static_file(path: &str, content_type: &str) -> Response {
+    match WebAssets::get(path) {
+        Some(content) => {
+            let body = content.data.into_owned();
+            Response::builder()
+                .header("Content-Type", content_type)
+                .body(body.into())
+                .unwrap()
+        }
+        None => Response::builder()
+            .status(404)
+            .body("Not Found".into())
+            .unwrap(),
+    }
+}
+
+/// WebSocket upgrade handler
+async fn websocket_handler(
+    ws: WebSocketUpgrade,
+    State(state): State<AppState>,
+) -> Response {
+    ws.on_upgrade(move |socket| handle_websocket(socket, state))
+}
+
+/// Handle a WebSocket connection
+async fn handle_websocket(socket: WebSocket, state: AppState) {
+    let (sink, mut stream) = socket.split();
     let sink = Arc::new(RwLock::new(sink));
 
     let mut client_id: Option<String> = None;
@@ -199,7 +249,7 @@ async fn handle_connection(
                                     display_monitor_ids: payload.display_monitor_ids.clone(),
                                 };
 
-                                client_manager
+                                state.client_manager
                                     .add_client(assigned_client_id.clone(), info.clone(), sink.clone())
                                     .await;
 
@@ -216,7 +266,7 @@ async fn handle_connection(
                                 }
 
                                 // Send MonitorListSync
-                                let monitors = monitor_manager.get_all_monitors().await;
+                                let monitors = state.monitor_manager.get_all_monitors().await;
                                 let monitor_sync = Message::monitor_list_sync(monitors);
                                 if let Ok(json) = serde_json::to_string(&monitor_sync) {
                                     let mut sink_guard = sink.write().await;
@@ -224,7 +274,7 @@ async fn handle_connection(
                                 }
 
                                 // Emit ClientConnected event
-                                let _ = event_tx.send(ServerEvent::ClientConnected {
+                                let _ = state.event_tx.send(ServerEvent::ClientConnected {
                                     client_id: info.client_id,
                                     name: info.client_name,
                                     monitor_ids: info.display_monitor_ids,
@@ -232,7 +282,7 @@ async fn handle_connection(
                             }
                             Message::FeedbackMessage { .. } => {
                                 // Emit FeedbackReceived event
-                                let _ = event_tx.send(ServerEvent::FeedbackReceived { message });
+                                let _ = state.event_tx.send(ServerEvent::FeedbackReceived { message });
                             }
                             Message::Pong { .. } => {
                                 // Just acknowledge pong, no action needed
@@ -251,7 +301,7 @@ async fn handle_connection(
                         }
                     }
                     Err(e) => {
-                        eprintln!("Failed to parse message from {}: {}", peer_addr, e);
+                        eprintln!("Failed to parse message: {}", e);
                     }
                 }
             }
@@ -259,7 +309,7 @@ async fn handle_connection(
                 break;
             }
             Err(e) => {
-                eprintln!("WebSocket error from {}: {}", peer_addr, e);
+                eprintln!("WebSocket error: {}", e);
                 break;
             }
             _ => {}
@@ -269,9 +319,7 @@ async fn handle_connection(
     // Cleanup on disconnect
     ping_task.abort();
     if let Some(id) = client_id {
-        client_manager.remove_client(&id).await;
-        let _ = event_tx.send(ServerEvent::ClientDisconnected { client_id: id });
+        state.client_manager.remove_client(&id).await;
+        let _ = state.event_tx.send(ServerEvent::ClientDisconnected { client_id: id });
     }
-
-    Ok(())
 }
