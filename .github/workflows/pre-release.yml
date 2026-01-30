@@ -68,7 +68,7 @@ jobs:
       - name: Prepare StreamDeck plugin for distribution
         shell: bash
         run: |
-          mkdir -p streamdeck-dist
+          mkdir -p streamdeck-dist/output
           cp -r streamdeck-plugin/com.misei.bi-kanpe.sdPlugin streamdeck-dist/
 
       - name: Export StreamDeck plugin using Distribution Tool
