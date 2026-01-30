@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ConfirmDialog } from "./ConfirmDialog";
 import type { ServerTemplate, ClientTemplate, Priority, FeedbackType } from "../types/messages";
 
 interface TemplateManagerProps {
@@ -31,6 +32,15 @@ export function TemplateManager({
   const [newContent, setNewContent] = useState<string>("");
   const [newPriority, setNewPriority] = useState<Priority>("normal");
   const [newFeedbackType, setNewFeedbackType] = useState<FeedbackType>("ack");
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    message: "",
+    onConfirm: () => {},
+  });
 
   const templates = mode === "server" ? serverTemplates : clientTemplates;
 
@@ -69,17 +79,22 @@ export function TemplateManager({
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("このテンプレートを削除しますか？")) return;
-
-    try {
-      if (mode === "server") {
-        await onDeleteServerTemplate(id);
-      } else {
-        await onDeleteClientTemplate(id);
-      }
-    } catch (err) {
-      console.error("Failed to delete template:", err);
-    }
+    setConfirmDialog({
+      isOpen: true,
+      message: "このテンプレートを削除しますか？",
+      onConfirm: async () => {
+        setConfirmDialog({ isOpen: false, message: "", onConfirm: () => {} });
+        try {
+          if (mode === "server") {
+            await onDeleteServerTemplate(id);
+          } else {
+            await onDeleteClientTemplate(id);
+          }
+        } catch (err) {
+          console.error("Failed to delete template:", err);
+        }
+      },
+    });
   };
 
   const startEdit = (template: ServerTemplate | ClientTemplate) => {
@@ -365,6 +380,15 @@ export function TemplateManager({
           ))
         )}
       </div>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog({ isOpen: false, message: "", onConfirm: () => {} })}
+        confirmButtonColor="#ef4444"
+      />
     </div>
   );
 }

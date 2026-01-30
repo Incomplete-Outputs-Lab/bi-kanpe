@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useClientState } from "../hooks/useClientState";
 import { ThemeToggle } from "./ThemeToggle";
+import { ConfirmDialog } from "./ConfirmDialog";
 import type { Message } from "../types/messages";
 
 interface ClientViewProps {
@@ -14,6 +15,15 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
   const [showDisconnectWarning, setShowDisconnectWarning] = useState<boolean>(true);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    message: "",
+    onConfirm: () => {},
+  });
 
   // Use empty array for display_monitor_ids - we'll receive all messages and filter in popout windows
   const clientState = useClientState([]);
@@ -106,13 +116,16 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
 
   const handleBackToMenu = async () => {
     if (clientState.isConnected) {
-      const confirmed = window.confirm(
-        "サーバーに接続中です。切断してメインメニューに戻りますか？"
-      );
-      if (!confirmed) {
-        return;
-      }
-      await handleDisconnect();
+      setConfirmDialog({
+        isOpen: true,
+        message: "サーバーに接続中です。切断してメインメニューに戻りますか？",
+        onConfirm: async () => {
+          setConfirmDialog({ isOpen: false, message: "", onConfirm: () => {} });
+          await handleDisconnect();
+          onBackToMenu();
+        },
+      });
+      return;
     }
     onBackToMenu();
   };
@@ -442,6 +455,15 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
           animation: spin 0.8s linear infinite;
         }
       `}</style>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog({ isOpen: false, message: "", onConfirm: () => {} })}
+        confirmButtonColor="#ef4444"
+      />
     </div>
   );
 }
