@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useServerState } from "../hooks/useServerState";
 import { useTemplates } from "../hooks/useTemplates";
 import { TemplateManager } from "./TemplateManager";
+import { ThemeToggle } from "./ThemeToggle";
 import type { Message, Priority, ServerTemplate } from "../types/messages";
 
 // Hoist static priority options to avoid recreation on every render
@@ -68,8 +69,8 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
     return map;
   }, [serverState.sentMessages, availableMonitors]);
 
-  const getPriorityColor = (p: string) => (p === "urgent" ? "#ff0000" : p === "high" ? "#ff8800" : "#333");
-  const getPriorityBackgroundColor = (p: string) => (p === "urgent" ? "#ffcccc" : p === "high" ? "#ffeecc" : "#f9f9f9");
+  const getPriorityColor = (p: string) => (p === "urgent" ? "#ff0000" : p === "high" ? "#ff8800" : "var(--text-color)");
+  const getPriorityBackgroundColor = (p: string) => (p === "urgent" ? "rgba(255, 0, 0, 0.1)" : p === "high" ? "rgba(255, 136, 0, 0.1)" : "var(--card-bg)");
 
   // Memoize feedback type emoji mapping
   const feedbackTypeEmoji = useMemo(() => ({
@@ -83,7 +84,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
   const priorityColor = useMemo(() => ({
     urgent: "#ff0000",
     high: "#ff8800",
-    normal: "#333",
+    normal: "var(--text-color)",
   }), []);
 
   // Memoize new feedbacks (not replies to messages)
@@ -251,43 +252,46 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
   }, [serverState.isRunning]);
 
   return (
-    <div style={{ padding: "1rem", display: "flex", gap: "1rem", height: "100vh", backgroundColor: "#f5f5f5" }}>
+    <div style={{ padding: "1rem", display: "flex", gap: "1rem", height: "100vh", backgroundColor: "var(--bg-color)", color: "var(--text-color)" }}>
       {/* Left Panel - Server Controls and Message Input */}
       <div className="scrollable" style={{ flex: 1, display: "flex", flexDirection: "column", gap: "1rem", overflowY: "auto" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h2 style={{ margin: 0, fontSize: "1.8rem", color: "#667eea" }}>
+          <h2 style={{ margin: 0, fontSize: "1.8rem", color: "var(--accent-color)" }}>
             🎬 カンペモード
           </h2>
-          <button
-            onClick={handleBackToMenu}
-            style={{
-              padding: "0.5rem 1rem",
-              fontSize: "0.95rem",
-              fontWeight: "600",
-              backgroundColor: "#6b7280",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            ← メインメニューに戻る
-          </button>
+          <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+            <ThemeToggle />
+            <button
+              onClick={handleBackToMenu}
+              style={{
+                padding: "0.5rem 1rem",
+                fontSize: "0.95rem",
+                fontWeight: "600",
+                backgroundColor: "#6b7280",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              ← メインメニューに戻る
+            </button>
+          </div>
         </div>
 
         {/* Server Controls */}
         <div
           style={{
-            border: "1px solid #ccc",
+            border: "1px solid var(--card-border)",
             padding: "1rem",
             borderRadius: "8px",
-            backgroundColor: "white",
+            backgroundColor: "var(--card-bg)",
           }}
         >
-          <h3 style={{ marginTop: 0, color: "#000" }}>サーバー制御</h3>
+          <h3 style={{ marginTop: 0, color: "var(--text-color)" }}>サーバー制御</h3>
           {!serverState.isRunning ? (
             <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
-              <label style={{ fontWeight: "600", color: "#000" }}>ポート番号:</label>
+              <label style={{ fontWeight: "600", color: "var(--text-color)" }}>ポート番号:</label>
               <input
                 type="number"
                 value={port}
@@ -296,7 +300,9 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                   width: "120px",
                   padding: "0.5rem",
                   borderRadius: "4px",
-                  border: "1px solid #ccc",
+                  border: "1px solid var(--input-border)",
+                  backgroundColor: "var(--input-bg)",
+                  color: "var(--input-text)",
                   fontSize: "1rem",
                 }}
               />
@@ -306,7 +312,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                   padding: "0.5rem 1.5rem",
                   fontSize: "1rem",
                   fontWeight: "600",
-                  backgroundColor: "#667eea",
+                  backgroundColor: "var(--accent-color)",
                   color: "white",
                   border: "none",
                   borderRadius: "4px",
@@ -322,7 +328,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                 <span style={{ color: "#22c55e", fontWeight: "600", fontSize: "1.1rem" }}>
                   ● 起動中
                 </span>
-                {" - "}<span style={{ color: "#000" }}>ポート</span> <strong style={{ fontSize: "1.1rem", color: "#1f2937" }}>{serverState.port}</strong>
+                {" - "}<span style={{ color: "var(--text-color)" }}>ポート</span> <strong style={{ fontSize: "1.1rem", color: "var(--text-color)" }}>{serverState.port}</strong>
               </p>
               <div style={{ display: "flex", gap: "0.5rem" }}>
                 <button
@@ -364,13 +370,13 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
         {serverState.isRunning && availableMonitors.length > 0 && (
           <div
             style={{
-              border: "1px solid #ccc",
+              border: "1px solid var(--card-border)",
               padding: "1rem",
               borderRadius: "8px",
-              backgroundColor: "white",
+              backgroundColor: "var(--card-bg)",
             }}
           >
-            <h3 style={{ marginTop: 0, marginBottom: "0.75rem", color: "#000", fontSize: "1rem" }}>
+            <h3 style={{ marginTop: 0, marginBottom: "0.75rem", color: "var(--text-color)", fontSize: "1rem" }}>
               現在表示中のカンペ
             </h3>
             <div
@@ -386,7 +392,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                 const bgColor =
                   msg?.type === "kanpe_message"
                     ? getPriorityBackgroundColor(msg.payload.priority)
-                    : "#f5f5f5";
+                    : "var(--card-bg)";
                 return (
                   <div
                     key={monitor.id}
@@ -394,7 +400,8 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                       padding: "1rem",
                       borderRadius: "6px",
                       backgroundColor: bgColor,
-                      borderLeft: monitor.color ? `4px solid ${monitor.color}` : "4px solid #d1d5db",
+                      border: "1px solid var(--card-border)",
+                      borderLeft: monitor.color ? `4px solid ${monitor.color}` : "4px solid var(--card-border)",
                       minHeight: "4rem",
                       display: "flex",
                       flexDirection: "column",
@@ -402,14 +409,14 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ fontWeight: "600", color: "#333", fontSize: "0.95rem" }}>
+                      <span style={{ fontWeight: "600", color: "var(--text-color)", fontSize: "0.95rem" }}>
                         {monitor.name}
                       </span>
                       <span
                         style={{
                           fontSize: "0.75rem",
                           fontWeight: "600",
-                          color: msg ? getPriorityColor(priority) : "#6b7280",
+                          color: msg ? getPriorityColor(priority) : "var(--muted-text)",
                         }}
                       >
                         {msg?.type === "kanpe_message"
@@ -424,7 +431,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                     <div
                       style={{
                         fontSize: "0.95rem",
-                        color: msg?.type === "kanpe_message" ? getPriorityColor(priority) : "#6b7280",
+                        color: msg?.type === "kanpe_message" ? getPriorityColor(priority) : "var(--muted-text)",
                         whiteSpace: "pre-wrap",
                         lineHeight: "1.3",
                         flex: 1,
@@ -436,7 +443,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                 );
               })}
             </div>
-            <p style={{ margin: "0.5rem 0 0", fontSize: "0.85rem", color: "#555", fontStyle: "italic" }}>
+            <p style={{ margin: "0.5rem 0 0", fontSize: "0.85rem", color: "var(--muted-text)", fontStyle: "italic" }}>
               各モニターに送信した直近のカンペ内容です
             </p>
           </div>
@@ -670,24 +677,24 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
         {serverState.isRunning ? (
           <div
             style={{
-              border: "1px solid #ccc",
+              border: "1px solid var(--card-border)",
               padding: "1rem",
               borderRadius: "8px",
               flex: 1,
               display: "flex",
               flexDirection: "column",
-              backgroundColor: "#f9f9f9",
+              backgroundColor: "var(--card-bg)",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-              <h3 style={{ margin: 0, color: "#000" }}>メッセージ送信</h3>
+              <h3 style={{ margin: 0, color: "var(--text-color)" }}>メッセージ送信</h3>
               <button
                 onClick={() => setShowTemplateManagement(!showTemplateManagement)}
                 style={{
                   padding: "0.5rem 1rem",
                   fontSize: "0.9rem",
                   fontWeight: "600",
-                  backgroundColor: "#8b5cf6",
+                  backgroundColor: "var(--accent-color)",
                   color: "white",
                   border: "none",
                   borderRadius: "4px",
@@ -701,7 +708,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
               {/* Template Quick Access */}
               {templates.config && templates.config.server_templates.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                  <label style={{ fontWeight: "600", fontSize: "0.85rem", color: "#555" }}>
+                  <label style={{ fontWeight: "600", fontSize: "0.85rem", color: "var(--muted-text)" }}>
                     クイックテンプレート:
                   </label>
                   <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
@@ -713,18 +720,18 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                           padding: "0.5rem 1rem",
                           fontSize: "0.9rem",
                           fontWeight: "500",
-                          backgroundColor: "#f3f4f6",
-                          color: "#374151",
-                          border: "1px solid #d1d5db",
+                          backgroundColor: "var(--secondary-bg)",
+                          color: "var(--text-color)",
+                          border: "1px solid var(--card-border)",
                           borderRadius: "4px",
                           cursor: "pointer",
                           transition: "all 0.2s ease",
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = "#e5e7eb";
+                          e.currentTarget.style.backgroundColor = "var(--input-bg)";
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = "#f3f4f6";
+                          e.currentTarget.style.backgroundColor = "var(--secondary-bg)";
                         }}
                       >
                         {template.content}
@@ -735,7 +742,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
               )}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                <label style={{ fontWeight: "600", fontSize: "0.95rem", color: "#000" }}>
+                <label style={{ fontWeight: "600", fontSize: "0.95rem", color: "var(--text-color)" }}>
                   メッセージ内容:
                 </label>
                 <textarea
@@ -748,7 +755,9 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                     resize: "vertical",
                     padding: "0.75rem",
                     borderRadius: "4px",
-                    border: "1px solid #ccc",
+                    border: "1px solid var(--input-border)",
+                    backgroundColor: "var(--input-bg)",
+                    color: "var(--input-text)",
                     fontSize: "1rem",
                   }}
                 />
@@ -756,13 +765,13 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
 
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <label style={{ fontWeight: "600", fontSize: "0.95rem", color: "#000" }}>
+                  <label style={{ fontWeight: "600", fontSize: "0.95rem", color: "var(--text-color)" }}>
                     送信先モニター:
                   </label>
                   <span
                     style={{
                       fontSize: "0.85rem",
-                      color: "#555",
+                      color: "var(--muted-text)",
                       fontStyle: "italic",
                     }}
                   >
@@ -775,9 +784,9 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                     gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
                     gap: "0.5rem",
                     padding: "0.75rem",
-                    backgroundColor: "white",
+                    backgroundColor: "var(--input-bg)",
                     borderRadius: "4px",
-                    border: "1px solid #ddd",
+                    border: "1px solid var(--input-border)",
                   }}
                 >
                   {/* All monitors option */}
@@ -790,9 +799,9 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                       borderRadius: "4px",
                       cursor: "pointer",
                       backgroundColor: targetMonitorIds.includes("ALL")
-                        ? "#667eea"
-                        : "#f5f5f5",
-                      color: targetMonitorIds.includes("ALL") ? "white" : "#333",
+                        ? "var(--accent-color)"
+                        : "var(--secondary-bg)",
+                      color: targetMonitorIds.includes("ALL") ? "white" : "var(--text-color)",
                       transition: "all 0.2s ease",
                       fontWeight: targetMonitorIds.includes("ALL") ? "600" : "normal",
                     }}
@@ -818,9 +827,9 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                         borderRadius: "4px",
                         cursor: "pointer",
                         backgroundColor: targetMonitorIds.includes(monitor.id)
-                          ? "#667eea"
-                          : "#f5f5f5",
-                        color: targetMonitorIds.includes(monitor.id) ? "white" : "#333",
+                          ? "var(--accent-color)"
+                          : "var(--secondary-bg)",
+                        color: targetMonitorIds.includes(monitor.id) ? "white" : "var(--text-color)",
                         transition: "all 0.2s ease",
                         fontWeight: targetMonitorIds.includes(monitor.id) ? "600" : "normal",
                         borderLeft: monitor.color && !targetMonitorIds.includes(monitor.id)
@@ -841,7 +850,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                 <p
                   style={{
                     fontSize: "0.85rem",
-                    color: "#555",
+                    color: "var(--muted-text)",
                     margin: 0,
                     fontStyle: "italic",
                   }}
@@ -851,7 +860,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                <label style={{ fontWeight: "600", fontSize: "0.95rem", color: "#000" }}>
+                <label style={{ fontWeight: "600", fontSize: "0.95rem", color: "var(--text-color)" }}>
                   優先度:
                 </label>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -863,9 +872,9 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                         flex: 1,
                         padding: "0.75rem",
                         borderRadius: "4px",
-                        border: priority === p.value ? `2px solid ${p.color}` : "2px solid #ddd",
-                        backgroundColor: priority === p.value ? p.bg : "white",
-                        color: priority === p.value ? p.color : "#333",
+                        border: priority === p.value ? `2px solid ${p.color}` : "2px solid var(--card-border)",
+                        backgroundColor: priority === p.value ? p.bg : "var(--card-bg)",
+                        color: priority === p.value ? p.color : "var(--text-color)",
                         cursor: "pointer",
                         fontWeight: priority === p.value ? "700" : "500",
                         fontSize: "0.95rem",
@@ -878,7 +887,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                     >
                       <span style={{ fontSize: "1.2rem" }}>{p.emoji}</span>
                       <span>{p.label}</span>
-                      <span style={{ fontSize: "0.75rem", fontWeight: "normal", color: priority === p.value ? "inherit" : "#555" }}>
+                      <span style={{ fontSize: "0.75rem", fontWeight: "normal", color: priority === p.value ? "inherit" : "var(--muted-text)" }}>
                         {p.desc}
                       </span>
                     </button>
@@ -887,7 +896,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                 <p
                   style={{
                     fontSize: "0.85rem",
-                    color: "#555",
+                    color: "var(--muted-text)",
                     margin: 0,
                     fontStyle: "italic",
                   }}
@@ -1022,28 +1031,28 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
           <div
             className="scrollable"
             style={{
-              border: "1px solid #ccc",
+              border: "1px solid var(--card-border)",
               padding: "1rem",
               borderRadius: "8px",
               maxHeight: "40%",
               overflowY: "auto",
-              backgroundColor: "white",
+              backgroundColor: "var(--card-bg)",
             }}
           >
-            <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: "0.5rem", color: "#000" }}>
+            <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--text-color)" }}>
               👥 接続中のキャスター
               <span
                 style={{
                   fontSize: "0.9rem",
                   fontWeight: "normal",
-                  color: "#555",
+                  color: "var(--muted-text)",
                 }}
               >
                 ({serverState.clients.length})
               </span>
             </h3>
             {serverState.clients.length === 0 ? (
-              <p style={{ color: "#555", fontStyle: "italic" }}>
+              <p style={{ color: "var(--muted-text)", fontStyle: "italic" }}>
                 キャスターの接続を待っています...
               </p>
             ) : (
@@ -1054,15 +1063,15 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                     style={{
                       padding: "0.75rem",
                       marginBottom: "0.5rem",
-                      border: "1px solid #ddd",
+                      border: "1px solid var(--card-border)",
                       borderRadius: "6px",
-                      backgroundColor: "#ffffff",
+                      backgroundColor: "var(--secondary-bg)",
                     }}
                   >
-                    <div style={{ fontWeight: "600", fontSize: "1rem", marginBottom: "0.25rem", color: "#1f2937" }}>
+                    <div style={{ fontWeight: "600", fontSize: "1rem", marginBottom: "0.25rem", color: "var(--text-color)" }}>
                       {client.name}
                     </div>
-                    <div style={{ fontSize: "0.85rem", color: "#374151" }}>
+                    <div style={{ fontSize: "0.85rem", color: "var(--muted-text)" }}>
                       担当モニター: {client.monitor_ids.map(id => id).join(", ")}
                     </div>
                   </li>
@@ -1075,28 +1084,28 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
           <div
             className="scrollable"
             style={{
-              border: "1px solid #ccc",
+              border: "1px solid var(--card-border)",
               padding: "1rem",
               borderRadius: "8px",
               flex: 1,
               overflowY: "auto",
-              backgroundColor: "white",
+              backgroundColor: "var(--card-bg)",
             }}
           >
-            <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: "0.5rem", color: "#000" }}>
+            <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--text-color)" }}>
               📤 送信メッセージとフィードバック
               <span
                 style={{
                   fontSize: "0.9rem",
                   fontWeight: "normal",
-                  color: "#555",
+                  color: "var(--muted-text)",
                 }}
               >
                 ({serverState.sentMessages.length})
               </span>
             </h3>
             {serverState.sentMessages.length === 0 ? (
-              <p style={{ color: "#555", fontStyle: "italic" }}>
+              <p style={{ color: "var(--muted-text)", fontStyle: "italic" }}>
                 まだメッセージを送信していません
               </p>
             ) : (
@@ -1105,16 +1114,16 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                   if (!item) return null;
                   const { msg, feedbacks } = item;
 
-                  const msgPriorityColor = priorityColor[msg.payload.priority] || "#333";
+                  const msgPriorityColor = priorityColor[msg.payload.priority] || "var(--text-color)";
 
                   return (
                         <div
                           key={msg.id}
                           style={{
                             padding: "1rem",
-                            border: "2px solid #e5e7eb",
+                            border: "1px solid var(--card-border)",
                             borderRadius: "8px",
-                            backgroundColor: "#fafafa",
+                            backgroundColor: "var(--secondary-bg)",
                           }}
                         >
                           {/* Sent Message */}
@@ -1130,18 +1139,18 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                                     padding: "0.125rem 0.5rem",
                                     borderRadius: "3px",
                                     backgroundColor: msgPriorityColor,
-                                    color: "white",
+                                    color: "#fff",
                                     fontWeight: "600",
                                   }}
                                 >
                                   {msg.payload.priority === "urgent" ? "🚨 緊急" : msg.payload.priority === "high" ? "⚠ 重要" : "📝 通常"}
                                 </span>
                               </div>
-                              <span style={{ fontSize: "0.85rem", color: "#6b7280" }}>
+                              <span style={{ fontSize: "0.85rem", color: "var(--muted-text)" }}>
                                 {formatTimestamp(msg.timestamp)}
                               </span>
                             </div>
-                            <div style={{ fontSize: "0.85rem", color: "#6b7280" }}>
+                            <div style={{ fontSize: "0.85rem", color: "var(--muted-text)" }}>
                               送信先: モニター {msg.payload.target_monitor_ids.includes("ALL") ? "全て" : msg.payload.target_monitor_ids.join(", ")}
                             </div>
                           </div>
@@ -1150,11 +1159,11 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                           <div
                             style={{
                               paddingLeft: "1rem",
-                              borderLeft: "3px solid #d1d5db",
+                              borderLeft: "3px solid var(--card-border)",
                             }}
                           >
                             {feedbacks.length === 0 ? (
-                              <div style={{ fontSize: "0.9rem", color: "#9ca3af", fontStyle: "italic" }}>
+                              <div style={{ fontSize: "0.9rem", color: "var(--muted-text)", fontStyle: "italic" }}>
                                 💤 未応答
                               </div>
                             ) : (
@@ -1167,22 +1176,22 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                                         style={{
                                           padding: "0.5rem",
                                           borderRadius: "4px",
-                                          backgroundColor: "#ffffff",
-                                          border: "1px solid #e5e7eb",
+                                          backgroundColor: "var(--card-bg)",
+                                          border: "1px solid var(--card-border)",
                                         }}
                                       >
                                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.25rem" }}>
-                                          <strong style={{ color: "#667eea", fontSize: "0.9rem" }}>
+                                          <strong style={{ color: "var(--accent-color)", fontSize: "0.9rem" }}>
                                             {feedbackTypeEmoji[fb.payload.feedback_type] || "•"} {fb.payload.client_name}
                                           </strong>
-                                          <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>
+                                          <span style={{ fontSize: "0.75rem", color: "var(--muted-text)" }}>
                                             {formatTimestamp(fb.timestamp)}
                                           </span>
                                         </div>
-                                        <div style={{ fontSize: "0.9rem", color: "#374151" }}>
+                                        <div style={{ fontSize: "0.9rem", color: "var(--text-color)" }}>
                                           {fb.payload.content}
                                         </div>
-                                        <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "0.125rem" }}>
+                                        <div style={{ fontSize: "0.75rem", color: "var(--muted-text)", marginTop: "0.125rem" }}>
                                           [{fb.payload.feedback_type}]
                                         </div>
                                       </div>
@@ -1204,28 +1213,28 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
           <div
             className="scrollable"
             style={{
-              border: "1px solid #ccc",
+              border: "1px solid var(--card-border)",
               padding: "1rem",
               borderRadius: "8px",
               overflowY: "auto",
-              backgroundColor: "white",
+              backgroundColor: "var(--card-bg)",
               maxHeight: "300px",
             }}
           >
-            <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: "0.5rem", color: "#000" }}>
+            <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--text-color)" }}>
               💬 新規フィードバック
               <span
                 style={{
                   fontSize: "0.9rem",
                   fontWeight: "normal",
-                  color: "#555",
+                  color: "var(--muted-text)",
                 }}
               >
                 ({newFeedbacks.length})
               </span>
             </h3>
             {newFeedbacks.length === 0 ? (
-              <p style={{ color: "#555", fontStyle: "italic" }}>
+              <p style={{ color: "var(--muted-text)", fontStyle: "italic" }}>
                 新規フィードバックはありません
               </p>
             ) : (
@@ -1241,22 +1250,22 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                           style={{
                             padding: "0.75rem",
                             borderRadius: "6px",
-                            backgroundColor: "#f9fafb",
-                            border: "2px solid #e5e7eb",
+                            backgroundColor: "var(--secondary-bg)",
+                            border: "1px solid var(--card-border)",
                           }}
                         >
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
-                            <strong style={{ color: "#667eea", fontSize: "1rem" }}>
+                            <strong style={{ color: "var(--accent-color)", fontSize: "1rem" }}>
                               {feedbackTypeEmoji[fb.payload.feedback_type] || "•"} {fb.payload.client_name}
                             </strong>
-                            <span style={{ fontSize: "0.85rem", color: "#9ca3af" }}>
+                            <span style={{ fontSize: "0.85rem", color: "var(--muted-text)" }}>
                               {formatTimestamp(fb.timestamp)}
                             </span>
                           </div>
-                          <div style={{ fontSize: "1rem", color: "#374151", marginBottom: "0.25rem" }}>
+                          <div style={{ fontSize: "1rem", color: "var(--text-color)", marginBottom: "0.25rem" }}>
                             {fb.payload.content}
                           </div>
-                          <div style={{ fontSize: "0.75rem", color: "#9ca3af" }}>
+                          <div style={{ fontSize: "0.75rem", color: "var(--muted-text)" }}>
                             [{fb.payload.feedback_type}]
                           </div>
                         </div>
