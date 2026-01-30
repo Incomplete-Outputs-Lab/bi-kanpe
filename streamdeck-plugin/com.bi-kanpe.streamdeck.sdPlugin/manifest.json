@@ -1,0 +1,55 @@
+{
+  "Name": "Bi-Kanpe",
+  "Version": "1.0.0",
+  "Author": "bi-kanpe",
+  "Description": "Bi-Kanpe integration for StreamDeck - Send feedback and react to messages",
+  "Category": "Bi-Kanpe",
+  "CategoryIcon": "imgs/category-icon",
+  "Icon": "imgs/plugin-icon",
+  "CodePath": "bin/plugin.js",
+  "PropertyInspectorPath": "ui/property-inspector.html",
+  "DefaultWindowSize": [500, 650],
+  "OS": [
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    },
+    {
+      "Platform": "mac",
+      "MinimumVersion": "10.15"
+    }
+  ],
+  "SDKVersion": 2,
+  "Software": {
+    "MinimumVersion": "6.0"
+  },
+  "Actions": [
+    {
+      "Name": "Send Feedback",
+      "UUID": "com.bi-kanpe.send-feedback",
+      "Icon": "imgs/send-feedback",
+      "Tooltip": "Send a feedback message to the director",
+      "PropertyInspectorPath": "ui/send-feedback.html",
+      "States": [
+        {
+          "Image": "imgs/send-feedback"
+        }
+      ]
+    },
+    {
+      "Name": "React to Latest",
+      "UUID": "com.bi-kanpe.react-to-latest",
+      "Icon": "imgs/react-to-latest",
+      "Tooltip": "Send a quick reaction to the latest message",
+      "PropertyInspectorPath": "ui/react-to-latest.html",
+      "States": [
+        {
+          "Image": "imgs/react-to-latest"
+        },
+        {
+          "Image": "imgs/react-to-latest-alert"
+        }
+      ]
+    }
+  ]
+}
