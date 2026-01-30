@@ -86,6 +86,7 @@ jobs:
 
       - name: Build Tauri App
         uses: tauri-apps/tauri-action@v0
+        id: tauri-action
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -123,5 +124,17 @@ jobs:
           releaseDraft: false
           includeUpdaterJson: true
           args: ${{ matrix.args }}
-          # Include StreamDeck plugin as release asset (only from Windows build to avoid duplicates)
-          artifactPaths: ${{ matrix.platform == 'windows-latest' && './streamdeck-plugin/dist/com.misei.bi-kanpe.streamDeckPlugin' || '' }}
+
+      - name: Upload StreamDeck Plugin to Release
+        if: matrix.platform == 'windows-latest'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          if [ -f "./streamdeck-plugin/dist/com.misei.bi-kanpe.streamDeckPlugin" ]; then
+            gh release upload ${{ github.ref_name }} "./streamdeck-plugin/dist/com.misei.bi-kanpe.streamDeckPlugin" --clobber
+            echo "✅ StreamDeck plugin uploaded successfully"
+          else
+            echo "❌ StreamDeck plugin file not found at ./streamdeck-plugin/dist/com.misei.bi-kanpe.streamDeckPlugin"
+            exit 1
+          fi
