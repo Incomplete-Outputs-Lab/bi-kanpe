@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useClientState } from "../hooks/useClientState";
+import type { Message } from "../types/messages";
 
 interface ClientViewProps {
   onBackToMenu: () => void;
@@ -33,6 +34,44 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
 
   // Get available monitor IDs from server
   const availableMonitors = clientState.availableMonitors;
+
+  // Current message per monitor (last message targeting that monitor or ALL)
+  const currentMessagePerMonitor = useMemo(() => {
+    const map = new Map<string, Message>();
+    for (const monitor of availableMonitors) {
+      const last = clientState.messages
+        .filter((msg): msg is Message & { type: "kanpe_message" } => {
+          if (msg.type !== "kanpe_message") return false;
+          const targetIds = msg.payload.target_monitor_ids;
+          return targetIds.includes("ALL") || targetIds.includes(monitor.id);
+        })
+        .slice(-1)[0];
+      if (last) map.set(monitor.id, last);
+    }
+    return map;
+  }, [clientState.messages, availableMonitors]);
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "urgent":
+        return "#ff0000";
+      case "high":
+        return "#ff8800";
+      default:
+        return "#333";
+    }
+  };
+
+  const getPriorityBackgroundColor = (priority: string) => {
+    switch (priority) {
+      case "urgent":
+        return "#ffcccc";
+      case "high":
+        return "#ffeecc";
+      default:
+        return "#f9f9f9";
+    }
+  };
 
   const handleConnect = async () => {
     try {
@@ -181,52 +220,93 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
             </div>
 
             {clientState.isConnected && availableMonitors.length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                <label style={{ fontWeight: "600", color: "#000" }}>利用可能なモニター:</label>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-                    gap: "0.5rem",
-                  }}
-                >
-                  {availableMonitors.map((monitor) => (
-                    <div
-                      key={monitor.id}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                        padding: "0.75rem",
-                        borderRadius: "4px",
-                        backgroundColor: "#f5f5f5",
-                        borderLeft: monitor.color ? `4px solid ${monitor.color}` : "none",
-                      }}
-                    >
-                      <span style={{ flex: 1, fontWeight: "600", color: "#333" }}>{monitor.name}</span>
-                      <button
-                        onClick={() => handlePopoutMonitor(monitor.id, monitor.name)}
-                        style={{
-                          padding: "0.5rem 1rem",
-                          fontSize: "0.9rem",
-                          backgroundColor: "#667eea",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                          fontWeight: "600",
-                        }}
-                        title="ポップアウト"
-                      >
-                        🗗 ポップアウト
-                      </button>
-                    </div>
-                  ))}
+              <>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  <label style={{ fontWeight: "600", color: "#000" }}>現在表示中のカンペ:</label>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+                      gap: "0.75rem",
+                    }}
+                  >
+                    {availableMonitors.map((monitor) => {
+                      const msg = currentMessagePerMonitor.get(monitor.id);
+                      const priority = msg?.type === "kanpe_message" ? msg.payload.priority : "normal";
+                      const bgColor = msg?.type === "kanpe_message"
+                        ? getPriorityBackgroundColor(msg.payload.priority)
+                        : "#f5f5f5";
+                      return (
+                        <div
+                          key={monitor.id}
+                          style={{
+                            padding: "1rem",
+                            borderRadius: "6px",
+                            backgroundColor: bgColor,
+                            borderLeft: monitor.color ? `4px solid ${monitor.color}` : "4px solid #d1d5db",
+                            minHeight: "4rem",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "0.5rem",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <span style={{ fontWeight: "600", color: "#333", fontSize: "0.95rem" }}>
+                              {monitor.name}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: "0.75rem",
+                                fontWeight: "600",
+                                color: msg ? getPriorityColor(priority) : "#6b7280",
+                              }}
+                            >
+                              {msg?.type === "kanpe_message"
+                                ? msg.payload.priority === "urgent"
+                                  ? "🚨 緊急"
+                                  : msg.payload.priority === "high"
+                                    ? "⚠ 重要"
+                                    : "📝 通常"
+                                : "待機中"}
+                            </span>
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "0.95rem",
+                              color: msg?.type === "kanpe_message" ? getPriorityColor(priority) : "#6b7280",
+                              whiteSpace: "pre-wrap",
+                              lineHeight: "1.3",
+                              flex: 1,
+                            }}
+                          >
+                            {msg?.type === "kanpe_message" ? msg.payload.content : "—"}
+                          </div>
+                          <button
+                            onClick={() => handlePopoutMonitor(monitor.id, monitor.name)}
+                            style={{
+                              padding: "0.4rem 0.75rem",
+                              fontSize: "0.85rem",
+                              backgroundColor: "#667eea",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "4px",
+                              cursor: "pointer",
+                              fontWeight: "600",
+                              alignSelf: "flex-start",
+                            }}
+                            title="ポップアウト"
+                          >
+                            🗗 ポップアウト
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p style={{ margin: 0, fontSize: "0.85rem", color: "#555", fontStyle: "italic" }}>
+                    💡 各モニターに表示中のカンペ内容です。🗗で別ウィンドウに大きく表示できます
+                  </p>
                 </div>
-                <p style={{ margin: 0, fontSize: "0.85rem", color: "#555", fontStyle: "italic" }}>
-                  💡 🗗ボタンをクリックして各モニターを別ウィンドウに表示できます
-                </p>
-              </div>
+              </>
             )}
 
             <div style={{ marginTop: "0.5rem" }}>

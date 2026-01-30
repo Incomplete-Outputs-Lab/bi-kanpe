@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useServerState } from "../hooks/useServerState";
 import { useTemplates } from "../hooks/useTemplates";
 import { TemplateManager } from "./TemplateManager";
-import type { Priority, ServerTemplate } from "../types/messages";
+import type { Message, Priority, ServerTemplate } from "../types/messages";
 
 // Hoist static priority options to avoid recreation on every render
 const PRIORITY_OPTIONS = [
@@ -51,6 +51,25 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
 
   // Get monitors from server state
   const availableMonitors = serverState.monitors;
+
+  // Current message per monitor (last sent message targeting that monitor or ALL)
+  const currentMessagePerMonitor = useMemo(() => {
+    const map = new Map<string, Message>();
+    for (const monitor of availableMonitors) {
+      const last = serverState.sentMessages
+        .filter((msg): msg is Message & { type: "kanpe_message" } => {
+          if (msg.type !== "kanpe_message") return false;
+          const targetIds = msg.payload.target_monitor_ids;
+          return targetIds.includes("ALL") || targetIds.includes(monitor.id);
+        })
+        .slice(-1)[0];
+      if (last) map.set(monitor.id, last);
+    }
+    return map;
+  }, [serverState.sentMessages, availableMonitors]);
+
+  const getPriorityColor = (p: string) => (p === "urgent" ? "#ff0000" : p === "high" ? "#ff8800" : "#333");
+  const getPriorityBackgroundColor = (p: string) => (p === "urgent" ? "#ffcccc" : p === "high" ? "#ffeecc" : "#f9f9f9");
 
   // Memoize feedback type emoji mapping
   const feedbackTypeEmoji = useMemo(() => ({
@@ -340,6 +359,88 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
             </div>
           )}
         </div>
+
+        {/* 現在表示中のカンペ（モニターごと） */}
+        {serverState.isRunning && availableMonitors.length > 0 && (
+          <div
+            style={{
+              border: "1px solid #ccc",
+              padding: "1rem",
+              borderRadius: "8px",
+              backgroundColor: "white",
+            }}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: "0.75rem", color: "#000", fontSize: "1rem" }}>
+              現在表示中のカンペ
+            </h3>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+                gap: "0.75rem",
+              }}
+            >
+              {availableMonitors.map((monitor) => {
+                const msg = currentMessagePerMonitor.get(monitor.id);
+                const priority = msg?.type === "kanpe_message" ? msg.payload.priority : "normal";
+                const bgColor =
+                  msg?.type === "kanpe_message"
+                    ? getPriorityBackgroundColor(msg.payload.priority)
+                    : "#f5f5f5";
+                return (
+                  <div
+                    key={monitor.id}
+                    style={{
+                      padding: "1rem",
+                      borderRadius: "6px",
+                      backgroundColor: bgColor,
+                      borderLeft: monitor.color ? `4px solid ${monitor.color}` : "4px solid #d1d5db",
+                      minHeight: "4rem",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "0.5rem",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span style={{ fontWeight: "600", color: "#333", fontSize: "0.95rem" }}>
+                        {monitor.name}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "0.75rem",
+                          fontWeight: "600",
+                          color: msg ? getPriorityColor(priority) : "#6b7280",
+                        }}
+                      >
+                        {msg?.type === "kanpe_message"
+                          ? msg.payload.priority === "urgent"
+                            ? "🚨 緊急"
+                            : msg.payload.priority === "high"
+                              ? "⚠ 重要"
+                              : "📝 通常"
+                          : "待機中"}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "0.95rem",
+                        color: msg?.type === "kanpe_message" ? getPriorityColor(priority) : "#6b7280",
+                        whiteSpace: "pre-wrap",
+                        lineHeight: "1.3",
+                        flex: 1,
+                      }}
+                    >
+                      {msg?.type === "kanpe_message" ? msg.payload.content : "—"}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <p style={{ margin: "0.5rem 0 0", fontSize: "0.85rem", color: "#555", fontStyle: "italic" }}>
+              各モニターに送信した直近のカンペ内容です
+            </p>
+          </div>
+        )}
 
         {/* Monitor Management Panel */}
         {serverState.isRunning && showMonitorManagement ? (
