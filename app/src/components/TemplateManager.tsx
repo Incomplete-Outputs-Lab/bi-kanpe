@@ -102,7 +102,7 @@ export function TemplateManager({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h4 style={{ margin: 0, fontSize: "1rem", color: "#333" }}>
+        <h4 style={{ margin: 0, fontSize: "1rem", color: "var(--text-color)" }}>
           📝 {mode === "server" ? "メッセージ" : "フィードバック"}テンプレート
         </h4>
         <button
@@ -111,7 +111,7 @@ export function TemplateManager({
             padding: "0.5rem 1rem",
             fontSize: "0.9rem",
             fontWeight: "600",
-            backgroundColor: isAdding ? "#6b7280" : "#22c55e",
+            backgroundColor: isAdding ? "var(--muted-text)" : "#22c55e",
             color: "white",
             border: "none",
             borderRadius: "4px",
@@ -127,7 +127,7 @@ export function TemplateManager({
         <div
           style={{
             padding: "1rem",
-            backgroundColor: "#f9f9f9",
+            backgroundColor: "var(--secondary-bg)",
             borderRadius: "6px",
             border: "2px solid #22c55e",
           }}
@@ -141,7 +141,9 @@ export function TemplateManager({
               style={{
                 padding: "0.5rem",
                 borderRadius: "4px",
-                border: "1px solid #ccc",
+                border: "1px solid var(--input-border)",
+                backgroundColor: "var(--input-bg)",
+                color: "var(--input-text)",
                 fontSize: "0.95rem",
               }}
             />
@@ -152,7 +154,9 @@ export function TemplateManager({
                 style={{
                   padding: "0.5rem",
                   borderRadius: "4px",
-                  border: "1px solid #ccc",
+                  border: "1px solid var(--input-border)",
+                  backgroundColor: "var(--input-bg)",
+                  color: "var(--input-text)",
                   fontSize: "0.95rem",
                 }}
               >
@@ -167,7 +171,9 @@ export function TemplateManager({
                 style={{
                   padding: "0.5rem",
                   borderRadius: "4px",
-                  border: "1px solid #ccc",
+                  border: "1px solid var(--input-border)",
+                  backgroundColor: "var(--input-bg)",
+                  color: "var(--input-text)",
                   fontSize: "0.95rem",
                 }}
               >
@@ -184,7 +190,7 @@ export function TemplateManager({
                 padding: "0.5rem",
                 fontSize: "0.95rem",
                 fontWeight: "600",
-                backgroundColor: newContent.trim() ? "#22c55e" : "#d1d5db",
+                backgroundColor: newContent.trim() ? "#22c55e" : "var(--muted-text)",
                 color: "white",
                 border: "none",
                 borderRadius: "4px",
@@ -200,7 +206,7 @@ export function TemplateManager({
       {/* Template List */}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         {templates.length === 0 ? (
-          <p style={{ color: "#999", fontStyle: "italic", fontSize: "0.9rem", margin: 0 }}>
+          <p style={{ color: "var(--muted-text)", fontStyle: "italic", fontSize: "0.9rem", margin: 0 }}>
             テンプレートがありません
           </p>
         ) : (
@@ -209,8 +215,8 @@ export function TemplateManager({
               key={template.id}
               style={{
                 padding: "0.75rem",
-                backgroundColor: editingId === template.id ? "#fffbeb" : "#ffffff",
-                border: editingId === template.id ? "2px solid #f59e0b" : "1px solid #e5e7eb",
+                backgroundColor: editingId === template.id ? "rgba(245, 158, 11, 0.1)" : "var(--card-bg)",
+                border: editingId === template.id ? "2px solid #f59e0b" : "1px solid var(--card-border)",
                 borderRadius: "6px",
               }}
             >
@@ -223,7 +229,9 @@ export function TemplateManager({
                     style={{
                       padding: "0.5rem",
                       borderRadius: "4px",
-                      border: "1px solid #ccc",
+                      border: "1px solid var(--input-border)",
+                      backgroundColor: "var(--input-bg)",
+                      color: "var(--input-text)",
                       fontSize: "0.95rem",
                     }}
                   />
@@ -234,7 +242,9 @@ export function TemplateManager({
                       style={{
                         padding: "0.5rem",
                         borderRadius: "4px",
-                        border: "1px solid #ccc",
+                        border: "1px solid var(--input-border)",
+                        backgroundColor: "var(--input-bg)",
+                        color: "var(--input-text)",
                         fontSize: "0.95rem",
                       }}
                     >
@@ -249,7 +259,9 @@ export function TemplateManager({
                       style={{
                         padding: "0.5rem",
                         borderRadius: "4px",
-                        border: "1px solid #ccc",
+                        border: "1px solid var(--input-border)",
+                        backgroundColor: "var(--input-bg)",
+                        color: "var(--input-text)",
                         fontSize: "0.95rem",
                       }}
                     >
@@ -268,7 +280,7 @@ export function TemplateManager({
                         padding: "0.5rem",
                         fontSize: "0.9rem",
                         fontWeight: "600",
-                        backgroundColor: newContent.trim() ? "#3b82f6" : "#d1d5db",
+                        backgroundColor: newContent.trim() ? "#3b82f6" : "var(--muted-text)",
                         color: "white",
                         border: "none",
                         borderRadius: "4px",
@@ -284,7 +296,7 @@ export function TemplateManager({
                         padding: "0.5rem",
                         fontSize: "0.9rem",
                         fontWeight: "600",
-                        backgroundColor: "#6b7280",
+                        backgroundColor: "var(--muted-text)",
                         color: "white",
                         border: "none",
                         borderRadius: "4px",
@@ -304,10 +316,10 @@ export function TemplateManager({
                       cursor: onSelectTemplate ? "pointer" : "default",
                     }}
                   >
-                    <div style={{ fontSize: "0.95rem", fontWeight: "600", color: "#333" }}>
+                    <div style={{ fontSize: "0.95rem", fontWeight: "600", color: "var(--text-color)" }}>
                       {template.content}
                     </div>
-                    <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>
+                    <div style={{ fontSize: "0.8rem", color: "var(--muted-text)" }}>
                       {mode === "server" && "priority" in template
                         ? `優先度: ${template.priority}`
                         : mode === "client" && "feedback_type" in template

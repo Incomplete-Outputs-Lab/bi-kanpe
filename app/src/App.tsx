@@ -3,6 +3,7 @@ import { ModeSelector } from "./components/ModeSelector";
 import { ServerView } from "./components/ServerView";
 import { ClientView } from "./components/ClientView";
 import MonitorPopout from "./components/MonitorPopout";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import "./App.css";
 
 type AppMode = "not_selected" | "server" | "client";
@@ -34,16 +35,22 @@ function App() {
 
   // Render popout window UI
   if (isPopout && popoutMonitorId !== null) {
-    return <MonitorPopout monitorId={popoutMonitorId} monitorName={popoutMonitorName} />;
+    return (
+      <ThemeProvider>
+        <MonitorPopout monitorId={popoutMonitorId} monitorName={popoutMonitorName} />
+      </ThemeProvider>
+    );
   }
 
   // Render normal app UI
   return (
-    <main>
-      {mode === "not_selected" && <ModeSelector onSelectMode={handleSelectMode} />}
-      {mode === "server" && <ServerView onBackToMenu={handleBackToModeSelection} />}
-      {mode === "client" && <ClientView onBackToMenu={handleBackToModeSelection} />}
-    </main>
+    <ThemeProvider>
+      <main>
+        {mode === "not_selected" && <ModeSelector onSelectMode={handleSelectMode} />}
+        {mode === "server" && <ServerView onBackToMenu={handleBackToModeSelection} />}
+        {mode === "client" && <ClientView onBackToMenu={handleBackToModeSelection} />}
+      </main>
+    </ThemeProvider>
   );
 }
 

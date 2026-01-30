@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useClientState } from "../hooks/useClientState";
 import { useTemplates } from "../hooks/useTemplates";
 import { TemplateManager } from "./TemplateManager";
+import { ThemeToggle } from "./ThemeToggle";
 import type { ClientTemplate } from "../types/messages";
 
 // Hoist feedback type colors to avoid recreation on every render
@@ -123,35 +124,35 @@ export default function MonitorPopout({
       case "high":
         return "#ff8800";
       default:
-        return "#333";
+        return "var(--text-color)";
     }
   };
 
   const getPriorityBackgroundColor = (priority: string) => {
     switch (priority) {
       case "urgent":
-        return "#ffcccc";
+        return "rgba(255, 0, 0, 0.1)";
       case "high":
-        return "#ffeecc";
+        return "rgba(255, 136, 0, 0.1)";
       default:
-        return "#f9f9f9";
+        return "var(--bg-color)";
     }
   };
 
   if (!clientState.isConnected) {
     return (
-      <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#333", color: "white" }}>
+      <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "var(--bg-color)", color: "var(--text-color)" }}>
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>🔌</div>
           <h1 style={{ fontSize: "2rem", fontWeight: "600", marginBottom: "0.5rem" }}>切断中</h1>
-          <p style={{ color: "#999" }}>メインウィンドウでサーバーに接続してください</p>
+          <p style={{ color: "var(--muted-text)" }}>メインウィンドウでサーバーに接続してください</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column", backgroundColor: "var(--bg-color)", color: "var(--text-color)" }}>
       {/* Fullscreen Message Display */}
       <div
         className={isFlashing ? "flash-animation" : ""}
@@ -164,7 +165,7 @@ export default function MonitorPopout({
             ? getPriorityBackgroundColor(
                 (currentMessage as any).payload?.priority || "normal"
               )
-            : "#fff",
+            : "var(--bg-color)",
           position: "relative",
           transition: "background-color 0.3s ease",
         }}
@@ -199,7 +200,7 @@ export default function MonitorPopout({
                 color: getPriorityColor(currentMessage.payload.priority),
                 padding: "0.5rem 1.5rem",
                 borderRadius: "20px",
-                backgroundColor: "#ffffff",
+                backgroundColor: "var(--card-bg)",
                 border: "2px solid " + getPriorityColor(currentMessage.payload.priority),
                 display: "inline-block",
               }}
@@ -212,7 +213,7 @@ export default function MonitorPopout({
             </div>
           </div>
         ) : (
-          <div style={{ textAlign: "center", color: "#555", padding: "2rem" }}>
+          <div style={{ textAlign: "center", color: "var(--muted-text)", padding: "2rem" }}>
             <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>💤</div>
             <p style={{ fontSize: "1.8rem", fontWeight: "600", margin: "0 0 0.5rem 0" }}>
               待機中...
@@ -233,7 +234,7 @@ export default function MonitorPopout({
             padding: "0.75rem 1.25rem",
             fontSize: "1rem",
             fontWeight: "600",
-            backgroundColor: showFeedbackPanel ? "#ef4444" : "#764ba2",
+            backgroundColor: showFeedbackPanel ? "#ef4444" : "var(--accent-color)",
             color: "white",
             border: "none",
             borderRadius: "8px",
@@ -252,55 +253,71 @@ export default function MonitorPopout({
           {showFeedbackPanel ? "✕ 閉じる" : "💬 フィードバック"}
         </button>
 
-        {/* Font Size Controls (fixed top-left) */}
+        {/* Controls (fixed top-left) */}
         <div
           style={{
             position: "absolute",
             top: "1rem",
             left: "1rem",
             display: "flex",
+            flexDirection: "column",
             gap: "0.5rem",
-            alignItems: "center",
-            backgroundColor: "rgba(255, 255, 255, 0.95)",
-            padding: "0.75rem",
-            borderRadius: "8px",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
             zIndex: 1000,
           }}
         >
-          <button
-            onClick={() => setFontSize(Math.max(1, fontSize - 0.5))}
+          {/* Font Size Controls */}
+          <div
             style={{
-              padding: "0.5rem 0.75rem",
-              fontSize: "1rem",
-              fontWeight: "600",
-              backgroundColor: "#667eea",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
+              display: "flex",
+              gap: "0.5rem",
+              alignItems: "center",
+              backgroundColor: "var(--card-bg)",
+              opacity: 0.95,
+              padding: "0.75rem",
+              borderRadius: "8px",
+              border: "1px solid var(--card-border)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
             }}
           >
-            A-
-          </button>
-          <span style={{ fontSize: "0.9rem", fontWeight: "600", color: "#333" }}>
-            {fontSize}rem
-          </span>
-          <button
-            onClick={() => setFontSize(Math.min(8, fontSize + 0.5))}
-            style={{
-              padding: "0.5rem 0.75rem",
-              fontSize: "1rem",
-              fontWeight: "600",
-              backgroundColor: "#667eea",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            A+
-          </button>
+            <button
+              onClick={() => setFontSize(Math.max(1, fontSize - 0.5))}
+              style={{
+                padding: "0.5rem 0.75rem",
+                fontSize: "1rem",
+                fontWeight: "600",
+                backgroundColor: "var(--accent-color)",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              A-
+            </button>
+            <span style={{ fontSize: "0.9rem", fontWeight: "600", color: "var(--text-color)" }}>
+              {fontSize}rem
+            </span>
+            <button
+              onClick={() => setFontSize(Math.min(8, fontSize + 0.5))}
+              style={{
+                padding: "0.5rem 0.75rem",
+                fontSize: "1rem",
+                fontWeight: "600",
+                backgroundColor: "var(--accent-color)",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              A+
+            </button>
+          </div>
+
+          {/* Theme Toggle */}
+          <div style={{ opacity: 0.95 }}>
+            <ThemeToggle />
+          </div>
         </div>
       </div>
 
@@ -308,8 +325,8 @@ export default function MonitorPopout({
       {showFeedbackPanel && (
         <div
           style={{
-            backgroundColor: "#f9f9f9",
-            borderTop: "2px solid #764ba2",
+            backgroundColor: "var(--secondary-bg)",
+            borderTop: "2px solid var(--accent-color)",
             display: "flex",
             flexDirection: "column",
             maxHeight: "50vh",
@@ -317,7 +334,7 @@ export default function MonitorPopout({
           }}
         >
           {/* Tab Buttons */}
-          <div style={{ display: "flex", borderBottom: "2px solid #d1d5db", backgroundColor: "#ffffff" }}>
+          <div style={{ display: "flex", borderBottom: "2px solid var(--card-border)", backgroundColor: "var(--card-bg)" }}>
             <button
               onClick={() => setActiveTab("reply")}
               disabled={!currentMessage}
@@ -326,10 +343,10 @@ export default function MonitorPopout({
                 padding: "1rem",
                 fontSize: "1rem",
                 fontWeight: "600",
-                backgroundColor: activeTab === "reply" ? "#764ba2" : "transparent",
-                color: activeTab === "reply" ? "#fff" : currentMessage ? "#333" : "#999",
+                backgroundColor: activeTab === "reply" ? "var(--accent-color)" : "transparent",
+                color: activeTab === "reply" ? "#fff" : currentMessage ? "var(--text-color)" : "var(--muted-text)",
                 border: "none",
-                borderBottom: activeTab === "reply" ? "3px solid #764ba2" : "3px solid transparent",
+                borderBottom: activeTab === "reply" ? "3px solid var(--accent-color)" : "3px solid transparent",
                 cursor: currentMessage ? "pointer" : "not-allowed",
                 transition: "all 0.2s ease",
                 opacity: currentMessage ? 1 : 0.5,
@@ -344,10 +361,10 @@ export default function MonitorPopout({
                 padding: "1rem",
                 fontSize: "1rem",
                 fontWeight: "600",
-                backgroundColor: activeTab === "new" ? "#764ba2" : "transparent",
-                color: activeTab === "new" ? "#fff" : "#333",
+                backgroundColor: activeTab === "new" ? "var(--accent-color)" : "transparent",
+                color: activeTab === "new" ? "#fff" : "var(--text-color)",
                 border: "none",
-                borderBottom: activeTab === "new" ? "3px solid #764ba2" : "3px solid transparent",
+                borderBottom: activeTab === "new" ? "3px solid var(--accent-color)" : "3px solid transparent",
                 cursor: "pointer",
                 transition: "all 0.2s ease",
               }}
@@ -361,10 +378,10 @@ export default function MonitorPopout({
                 padding: "1rem",
                 fontSize: "1rem",
                 fontWeight: "600",
-                backgroundColor: activeTab === "template" ? "#764ba2" : "transparent",
-                color: activeTab === "template" ? "#fff" : "#333",
+                backgroundColor: activeTab === "template" ? "var(--accent-color)" : "transparent",
+                color: activeTab === "template" ? "#fff" : "var(--text-color)",
                 border: "none",
-                borderBottom: activeTab === "template" ? "3px solid #764ba2" : "3px solid transparent",
+                borderBottom: activeTab === "template" ? "3px solid var(--accent-color)" : "3px solid transparent",
                 cursor: "pointer",
                 transition: "all 0.2s ease",
               }}
@@ -389,10 +406,10 @@ export default function MonitorPopout({
                   <div
                     style={{
                       padding: "2rem",
-                      backgroundColor: "#fff3cd",
+                      backgroundColor: "rgba(255, 193, 7, 0.1)",
                       border: "2px solid #ffc107",
                       borderRadius: "8px",
-                      color: "#856404",
+                      color: "#ffc107",
                       fontWeight: "600",
                       textAlign: "center",
                     }}
@@ -402,7 +419,7 @@ export default function MonitorPopout({
                   </div>
                 ) : templates.config && templates.config.client_templates.length > 0 ? (
                   <>
-                    <h4 style={{ margin: 0, color: "#333", fontSize: "1rem" }}>
+                    <h4 style={{ margin: 0, color: "var(--text-color)", fontSize: "1rem" }}>
                       テンプレートを選択して返信:
                     </h4>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "0.75rem" }}>
@@ -417,7 +434,7 @@ export default function MonitorPopout({
                             style={{
                               padding: "1rem",
                               textAlign: "left",
-                              backgroundColor: "#ffffff",
+                              backgroundColor: "var(--card-bg)",
                               border: `2px solid ${typeInfo.bg}`,
                               borderRadius: "8px",
                               cursor: isSendingFeedback ? "not-allowed" : "pointer",
@@ -428,13 +445,13 @@ export default function MonitorPopout({
                             }}
                             onMouseEnter={(e) => {
                               if (!isSendingFeedback) {
-                                e.currentTarget.style.backgroundColor = "#f9fafb";
+                                e.currentTarget.style.backgroundColor = "var(--secondary-bg)";
                                 e.currentTarget.style.transform = "translateY(-2px)";
                                 e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
                               }
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = "#ffffff";
+                              e.currentTarget.style.backgroundColor = "var(--card-bg)";
                               e.currentTarget.style.transform = "translateY(0)";
                               e.currentTarget.style.boxShadow = "none";
                             }}
@@ -452,7 +469,7 @@ export default function MonitorPopout({
                             >
                               {typeInfo.label}
                             </span>
-                            <span style={{ fontSize: "0.95rem", fontWeight: "600", color: "#333" }}>
+                            <span style={{ fontSize: "0.95rem", fontWeight: "600", color: "var(--text-color)" }}>
                               {template.content}
                             </span>
                           </button>
@@ -464,10 +481,10 @@ export default function MonitorPopout({
                   <div
                     style={{
                       padding: "2rem",
-                      backgroundColor: "#f3f4f6",
-                      border: "2px solid #d1d5db",
+                      backgroundColor: "var(--secondary-bg)",
+                      border: "2px solid var(--card-border)",
                       borderRadius: "8px",
-                      color: "#6b7280",
+                      color: "var(--muted-text)",
                       textAlign: "center",
                     }}
                   >
@@ -483,7 +500,7 @@ export default function MonitorPopout({
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                 {templates.config && templates.config.client_templates.length > 0 ? (
                   <>
-                    <h4 style={{ margin: 0, color: "#333", fontSize: "1rem" }}>
+                    <h4 style={{ margin: 0, color: "var(--text-color)", fontSize: "1rem" }}>
                       テンプレートを選択して新規メッセージを送信:
                     </h4>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "0.75rem" }}>
@@ -498,7 +515,7 @@ export default function MonitorPopout({
                             style={{
                               padding: "1rem",
                               textAlign: "left",
-                              backgroundColor: "#ffffff",
+                              backgroundColor: "var(--card-bg)",
                               border: `2px solid ${typeInfo.bg}`,
                               borderRadius: "8px",
                               cursor: isSendingFeedback ? "not-allowed" : "pointer",
@@ -509,13 +526,13 @@ export default function MonitorPopout({
                             }}
                             onMouseEnter={(e) => {
                               if (!isSendingFeedback) {
-                                e.currentTarget.style.backgroundColor = "#f9fafb";
+                                e.currentTarget.style.backgroundColor = "var(--secondary-bg)";
                                 e.currentTarget.style.transform = "translateY(-2px)";
                                 e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
                               }
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = "#ffffff";
+                              e.currentTarget.style.backgroundColor = "var(--card-bg)";
                               e.currentTarget.style.transform = "translateY(0)";
                               e.currentTarget.style.boxShadow = "none";
                             }}
@@ -533,7 +550,7 @@ export default function MonitorPopout({
                             >
                               {typeInfo.label}
                             </span>
-                            <span style={{ fontSize: "0.95rem", fontWeight: "600", color: "#333" }}>
+                            <span style={{ fontSize: "0.95rem", fontWeight: "600", color: "var(--text-color)" }}>
                               {template.content}
                             </span>
                           </button>
@@ -545,10 +562,10 @@ export default function MonitorPopout({
                   <div
                     style={{
                       padding: "2rem",
-                      backgroundColor: "#f3f4f6",
-                      border: "2px solid #d1d5db",
+                      backgroundColor: "var(--secondary-bg)",
+                      border: "2px solid var(--card-border)",
                       borderRadius: "8px",
-                      color: "#6b7280",
+                      color: "var(--muted-text)",
                       textAlign: "center",
                     }}
                   >

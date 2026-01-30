@@ -1,3 +1,5 @@
+import { ThemeToggle } from './ThemeToggle';
+
 interface ModeSelectorProps {
   onSelectMode: (mode: "server" | "client") => void;
 }
@@ -13,8 +15,16 @@ export function ModeSelector({ onSelectMode }: ModeSelectorProps) {
         height: "100vh",
         background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
         padding: "2rem",
+        position: "relative",
       }}
     >
+      <div style={{
+        position: "absolute",
+        top: "1rem",
+        right: "1rem",
+      }}>
+        <ThemeToggle />
+      </div>
       <div style={{ textAlign: "center", marginBottom: "3rem" }}>
         <h1
           style={{
@@ -51,7 +61,7 @@ export function ModeSelector({ onSelectMode }: ModeSelectorProps) {
         <div
           onClick={() => onSelectMode("server")}
           style={{
-            background: "white",
+            background: "var(--card-bg)",
             borderRadius: "12px",
             padding: "2rem",
             cursor: "pointer",
@@ -60,6 +70,7 @@ export function ModeSelector({ onSelectMode }: ModeSelectorProps) {
             display: "flex",
             flexDirection: "column",
             gap: "1rem",
+            border: "1px solid var(--card-border)",
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = "translateY(-8px)";
@@ -83,7 +94,7 @@ export function ModeSelector({ onSelectMode }: ModeSelectorProps) {
             style={{
               fontSize: "1.8rem",
               margin: 0,
-              color: "#667eea",
+              color: "var(--accent-color)",
               textAlign: "center",
             }}
           >
@@ -92,7 +103,7 @@ export function ModeSelector({ onSelectMode }: ModeSelectorProps) {
           <p
             style={{
               fontSize: "1rem",
-              color: "#555",
+              color: "var(--muted-text)",
               margin: 0,
               textAlign: "center",
               fontWeight: "500",
@@ -102,7 +113,7 @@ export function ModeSelector({ onSelectMode }: ModeSelectorProps) {
           </p>
           <div
             style={{
-              borderTop: "1px solid #eee",
+              borderTop: "1px solid var(--card-border)",
               paddingTop: "1rem",
               marginTop: "0.5rem",
             }}
@@ -113,7 +124,7 @@ export function ModeSelector({ onSelectMode }: ModeSelectorProps) {
                 padding: 0,
                 margin: 0,
                 fontSize: "0.95rem",
-                color: "#555",
+                color: "var(--muted-text)",
                 lineHeight: "1.8",
               }}
             >
@@ -128,7 +139,7 @@ export function ModeSelector({ onSelectMode }: ModeSelectorProps) {
             style={{
               marginTop: "auto",
               padding: "0.75rem",
-              background: "#667eea",
+              background: "var(--accent-color)",
               color: "white",
               textAlign: "center",
               borderRadius: "6px",
@@ -144,7 +155,7 @@ export function ModeSelector({ onSelectMode }: ModeSelectorProps) {
         <div
           onClick={() => onSelectMode("client")}
           style={{
-            background: "white",
+            background: "var(--card-bg)",
             borderRadius: "12px",
             padding: "2rem",
             cursor: "pointer",
@@ -153,6 +164,7 @@ export function ModeSelector({ onSelectMode }: ModeSelectorProps) {
             display: "flex",
             flexDirection: "column",
             gap: "1rem",
+            border: "1px solid var(--card-border)",
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = "translateY(-8px)";
@@ -185,7 +197,7 @@ export function ModeSelector({ onSelectMode }: ModeSelectorProps) {
           <p
             style={{
               fontSize: "1rem",
-              color: "#555",
+              color: "var(--muted-text)",
               margin: 0,
               textAlign: "center",
               fontWeight: "500",
@@ -195,7 +207,7 @@ export function ModeSelector({ onSelectMode }: ModeSelectorProps) {
           </p>
           <div
             style={{
-              borderTop: "1px solid #eee",
+              borderTop: "1px solid var(--card-border)",
               paddingTop: "1rem",
               marginTop: "0.5rem",
             }}
@@ -206,7 +218,7 @@ export function ModeSelector({ onSelectMode }: ModeSelectorProps) {
                 padding: 0,
                 margin: 0,
                 fontSize: "0.95rem",
-                color: "#555",
+                color: "var(--muted-text)",
                 lineHeight: "1.8",
               }}
             >

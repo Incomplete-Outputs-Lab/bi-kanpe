@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useClientState } from "../hooks/useClientState";
+import { ThemeToggle } from "./ThemeToggle";
+import type { Message } from "../types/messages";
 
 interface ClientViewProps {
   onBackToMenu: () => void;
@@ -33,6 +35,44 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
 
   // Get available monitor IDs from server
   const availableMonitors = clientState.availableMonitors;
+
+  // Current message per monitor (last message targeting that monitor or ALL)
+  const currentMessagePerMonitor = useMemo(() => {
+    const map = new Map<string, Message>();
+    for (const monitor of availableMonitors) {
+      const last = clientState.messages
+        .filter((msg): msg is Message & { type: "kanpe_message" } => {
+          if (msg.type !== "kanpe_message") return false;
+          const targetIds = msg.payload.target_monitor_ids;
+          return targetIds.includes("ALL") || targetIds.includes(monitor.id);
+        })
+        .slice(-1)[0];
+      if (last) map.set(monitor.id, last);
+    }
+    return map;
+  }, [clientState.messages, availableMonitors]);
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "urgent":
+        return "#ff0000";
+      case "high":
+        return "#ff8800";
+      default:
+        return "var(--text-color)";
+    }
+  };
+
+  const getPriorityBackgroundColor = (priority: string) => {
+    switch (priority) {
+      case "urgent":
+        return "rgba(255, 0, 0, 0.1)";
+      case "high":
+        return "rgba(255, 136, 0, 0.1)";
+      default:
+        return "var(--card-bg)";
+    }
+  };
 
   const handleConnect = async () => {
     try {
@@ -100,7 +140,7 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#f9f9f9" }}>
+    <div style={{ minHeight: "100vh", backgroundColor: "var(--bg-color)", color: "var(--text-color)" }}>
       {/* Connection Panel */}
       <div
         className="scrollable"
@@ -111,24 +151,27 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
         }}
       >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
-            <h2 style={{ margin: 0, color: "#764ba2", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <h2 style={{ margin: 0, color: "var(--accent-color)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               🎤 キャスターモード
             </h2>
-            <button
-              onClick={handleBackToMenu}
-              style={{
-                padding: "0.5rem 1rem",
-                fontSize: "0.95rem",
-                fontWeight: "600",
-                backgroundColor: "#6b7280",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-            >
-              ← メインメニューに戻る
-            </button>
+            <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+              <ThemeToggle />
+              <button
+                onClick={handleBackToMenu}
+                style={{
+                  padding: "0.5rem 1rem",
+                  fontSize: "0.95rem",
+                  fontWeight: "600",
+                  backgroundColor: "#6b7280",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              >
+                ← メインメニューに戻る
+              </button>
+            </div>
           </div>
           <div
             style={{
@@ -139,7 +182,7 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
             }}
           >
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              <label style={{ fontWeight: "600", color: "#000" }}>サーバーアドレス:</label>
+              <label style={{ fontWeight: "600", color: "var(--text-color)" }}>サーバーアドレス:</label>
               <input
                 type="text"
                 value={serverAddress}
@@ -148,19 +191,19 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
                 style={{
                   padding: "0.75rem",
                   borderRadius: "4px",
-                  border: "1px solid #ccc",
+                  border: "1px solid var(--input-border)",
                   fontSize: "1rem",
                   width: "100%",
                 }}
                 disabled={clientState.isConnected}
               />
-              <p style={{ margin: 0, fontSize: "0.85rem", color: "#555", fontStyle: "italic" }}>
+              <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)", fontStyle: "italic" }}>
                 💡 カンペが起動したサーバーのアドレスとポート番号
               </p>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              <label style={{ fontWeight: "600", color: "#000" }}>キャスター名:</label>
+              <label style={{ fontWeight: "600", color: "var(--text-color)" }}>キャスター名:</label>
               <input
                 type="text"
                 value={clientName}
@@ -169,64 +212,106 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
                 style={{
                   padding: "0.75rem",
                   borderRadius: "4px",
-                  border: "1px solid #ccc",
+                  border: "1px solid var(--input-border)",
                   fontSize: "1rem",
                   width: "100%",
                 }}
                 disabled={clientState.isConnected}
               />
-              <p style={{ margin: 0, fontSize: "0.85rem", color: "#555", fontStyle: "italic" }}>
+              <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)", fontStyle: "italic" }}>
                 💡 カンペ側に表示される識別名
               </p>
             </div>
 
             {clientState.isConnected && availableMonitors.length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                <label style={{ fontWeight: "600", color: "#000" }}>利用可能なモニター:</label>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-                    gap: "0.5rem",
-                  }}
-                >
-                  {availableMonitors.map((monitor) => (
-                    <div
-                      key={monitor.id}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                        padding: "0.75rem",
-                        borderRadius: "4px",
-                        backgroundColor: "#f5f5f5",
-                        borderLeft: monitor.color ? `4px solid ${monitor.color}` : "none",
-                      }}
-                    >
-                      <span style={{ flex: 1, fontWeight: "600", color: "#333" }}>{monitor.name}</span>
-                      <button
-                        onClick={() => handlePopoutMonitor(monitor.id, monitor.name)}
-                        style={{
-                          padding: "0.5rem 1rem",
-                          fontSize: "0.9rem",
-                          backgroundColor: "#667eea",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                          fontWeight: "600",
-                        }}
-                        title="ポップアウト"
-                      >
-                        🗗 ポップアウト
-                      </button>
-                    </div>
-                  ))}
+              <>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  <label style={{ fontWeight: "600", color: "var(--text-color)" }}>現在表示中のカンペ:</label>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+                      gap: "0.75rem",
+                    }}
+                  >
+                    {availableMonitors.map((monitor) => {
+                      const msg = currentMessagePerMonitor.get(monitor.id);
+                      const priority = msg?.type === "kanpe_message" ? msg.payload.priority : "normal";
+                      const bgColor = msg?.type === "kanpe_message"
+                        ? getPriorityBackgroundColor(msg.payload.priority)
+                        : "var(--card-bg)";
+                      return (
+                        <div
+                          key={monitor.id}
+                          style={{
+                            padding: "1rem",
+                            borderRadius: "6px",
+                            backgroundColor: bgColor,
+                            border: "1px solid var(--card-border)",
+                            borderLeft: monitor.color ? `4px solid ${monitor.color}` : "4px solid var(--card-border)",
+                            minHeight: "4rem",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "0.5rem",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <span style={{ fontWeight: "600", color: "var(--text-color)", fontSize: "0.95rem" }}>
+                              {monitor.name}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: "0.75rem",
+                                fontWeight: "600",
+                                color: msg ? getPriorityColor(priority) : "var(--muted-text)",
+                              }}
+                            >
+                              {msg?.type === "kanpe_message"
+                                ? msg.payload.priority === "urgent"
+                                  ? "🚨 緊急"
+                                  : msg.payload.priority === "high"
+                                    ? "⚠ 重要"
+                                    : "📝 通常"
+                                : "待機中"}
+                            </span>
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "0.95rem",
+                              color: msg?.type === "kanpe_message" ? getPriorityColor(priority) : "var(--muted-text)",
+                              whiteSpace: "pre-wrap",
+                              lineHeight: "1.3",
+                              flex: 1,
+                            }}
+                          >
+                            {msg?.type === "kanpe_message" ? msg.payload.content : "—"}
+                          </div>
+                          <button
+                            onClick={() => handlePopoutMonitor(monitor.id, monitor.name)}
+                            style={{
+                              padding: "0.4rem 0.75rem",
+                              fontSize: "0.85rem",
+                              backgroundColor: "#667eea",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "4px",
+                              cursor: "pointer",
+                              fontWeight: "600",
+                              alignSelf: "flex-start",
+                            }}
+                            title="ポップアウト"
+                          >
+                            🗗 ポップアウト
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted-text)", fontStyle: "italic" }}>
+                    💡 各モニターに表示中のカンペ内容です。🗗で別ウィンドウに大きく表示できます
+                  </p>
                 </div>
-                <p style={{ margin: 0, fontSize: "0.85rem", color: "#555", fontStyle: "italic" }}>
-                  💡 🗗ボタンをクリックして各モニターを別ウィンドウに表示できます
-                </p>
-              </div>
+              </>
             )}
 
             <div style={{ marginTop: "0.5rem" }}>
@@ -238,7 +323,7 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
                     padding: "0.75rem 2rem",
                     fontSize: "1.1rem",
                     fontWeight: "600",
-                    backgroundColor: isConnecting ? "#9ca3af" : "#764ba2",
+                    backgroundColor: isConnecting ? "#9ca3af" : "var(--accent-color)",
                     color: "white",
                     border: "none",
                     borderRadius: "6px",
@@ -268,7 +353,7 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
                     }}
                   >
                     ● 接続中:{" "}
-                    <span style={{ color: "#ffffff", backgroundColor: "#374151", padding: "0.25rem 0.75rem", borderRadius: "4px", fontWeight: "700" }}>
+                    <span style={{ color: "var(--input-text)", backgroundColor: "var(--input-bg)", padding: "0.25rem 0.75rem", borderRadius: "4px", border: "1px solid var(--input-border)", fontWeight: "700" }}>
                       {clientState.serverAddress}
                     </span>
                   </span>
@@ -295,8 +380,9 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
               <div
                 style={{
                   padding: "0.75rem",
-                  backgroundColor: "#ffcccc",
-                  border: "2px solid #ff0000",
+                  backgroundColor: "rgba(239, 68, 68, 0.1)",
+                  color: "#ef4444",
+                  border: "2px solid #ef4444",
                   borderRadius: "6px",
                   fontWeight: "600",
                 }}
@@ -309,7 +395,8 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
               <div
                 style={{
                   padding: "0.75rem",
-                  backgroundColor: "#fef3c7",
+                  backgroundColor: "rgba(245, 158, 11, 0.1)",
+                  color: "#f59e0b",
                   border: "2px solid #f59e0b",
                   borderRadius: "6px",
                   fontWeight: "600",

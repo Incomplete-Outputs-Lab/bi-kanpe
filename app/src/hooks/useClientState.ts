@@ -98,6 +98,7 @@ export function useClientState(displayMonitorIds: string[] = []) {
         if (message.type === "kanpe_message") {
           const targetIds = message.payload.target_monitor_ids;
           const shouldDisplay =
+            stableMonitorIds.length === 0 || // Main window: accept all messages
             targetIds.includes("ALL") || // "ALL" means all monitors
             stableMonitorIds.some((id) => targetIds.includes(id));
 
@@ -167,6 +168,7 @@ export function useClientState(displayMonitorIds: string[] = []) {
       (event) => {
         const targetIds = event.payload.target_monitor_ids;
         const shouldFlash =
+          stableMonitorIds.length === 0 || // Main window: accept all
           targetIds.includes("ALL") || // "ALL" means all monitors
           stableMonitorIds.some((id) => targetIds.includes(id));
 
@@ -185,6 +187,7 @@ export function useClientState(displayMonitorIds: string[] = []) {
       (event) => {
         const targetIds = event.payload.target_monitor_ids;
         const shouldClear =
+          stableMonitorIds.length === 0 || // Main window: accept all
           targetIds.includes("ALL") || // "ALL" means all monitors
           stableMonitorIds.some((id) => targetIds.includes(id));
 
