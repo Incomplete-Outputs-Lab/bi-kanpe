@@ -17,6 +17,7 @@ pub fn run() {
             commands::stop_server,
             commands::send_kanpe_message,
             commands::get_connected_clients,
+            commands::get_server_addresses,
             commands::add_virtual_monitor,
             commands::remove_virtual_monitor,
             commands::update_virtual_monitor,

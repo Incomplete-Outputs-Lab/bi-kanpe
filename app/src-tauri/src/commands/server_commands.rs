@@ -260,3 +260,38 @@ pub async fn send_clear_command(
         .await
         .map_err(|e| format!("Failed to send clear command: {}", e))
 }
+
+/// Get server addresses for Web client connection
+#[tauri::command]
+pub async fn get_server_addresses(state: State<'_, AppState>) -> Result<Vec<String>, String> {
+    let server = state.server.read().await;
+    if server.is_none() {
+        return Err("Server not running".to_string());
+    }
+    
+    // Get local IP addresses
+    let mut addresses = Vec::new();
+    
+    // Try to get network interfaces
+    if let Ok(interfaces) = local_ip_address::list_afinet_netifas() {
+        for (_name, ip) in interfaces {
+            // Only include IPv4 addresses that are accessible from other local PCs
+            if let std::net::IpAddr::V4(ipv4) = ip {
+                // Skip loopback (127.x.x.x) and link-local (169.254.x.x) addresses
+                if !ipv4.is_loopback() && !ipv4.to_string().starts_with("169.254") {
+                    // Get port from config or use default
+                    let port = 9876; // Default port, could be from state
+                    addresses.push(format!("http://{}:{}", ipv4, port));
+                }
+            }
+            // Skip IPv6 addresses (IpAddr::V6)
+        }
+    }
+    
+    // If no addresses found, add localhost
+    if addresses.is_empty() {
+        addresses.push("http://localhost:9876".to_string());
+    }
+    
+    Ok(addresses)
+}

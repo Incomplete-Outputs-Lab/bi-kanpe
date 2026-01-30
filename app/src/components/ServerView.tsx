@@ -2,8 +2,11 @@ import { useState, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useServerState } from "../hooks/useServerState";
 import { useTemplates } from "../hooks/useTemplates";
+import { useToast } from "../hooks/useToast";
 import { TemplateManager } from "./TemplateManager";
 import { ThemeToggle } from "./ThemeToggle";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { QRCodeSVG } from "qrcode.react";
 import type { Message, Priority, ServerTemplate } from "../types/messages";
 
 // Hoist static priority options to avoid recreation on every render
@@ -20,6 +23,7 @@ interface ServerViewProps {
 export function ServerView({ onBackToMenu }: ServerViewProps) {
   const serverState = useServerState();
   const templates = useTemplates();
+  const { showToast } = useToast();
   const [port, setPort] = useState<number>(9876);
   const [messageContent, setMessageContent] = useState<string>("");
   const [targetMonitorIds, setTargetMonitorIds] = useState<string[]>(["ALL"]);
@@ -36,16 +40,31 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
   const [flashSent, setFlashSent] = useState<boolean>(false);
   const [isSendingClear, setIsSendingClear] = useState<boolean>(false);
   const [clearSent, setClearSent] = useState<boolean>(false);
+  const [serverAddresses, setServerAddresses] = useState<string[]>([]);
+  const [showQRCode, setShowQRCode] = useState<boolean>(false);
+  const [showAllAddresses, setShowAllAddresses] = useState<boolean>(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    message: "",
+    onConfirm: () => {},
+  });
 
   const handleBackToMenu = async () => {
     if (serverState.isRunning) {
-      const confirmed = window.confirm(
-        "サーバーが起動中です。停止してメインメニューに戻りますか？"
-      );
-      if (!confirmed) {
-        return;
-      }
-      await handleStopServer();
+      setConfirmDialog({
+        isOpen: true,
+        message: "サーバーが起動中です。停止してメインメニューに戻りますか？",
+        onConfirm: async () => {
+          setConfirmDialog({ isOpen: false, message: "", onConfirm: () => {} });
+          await handleStopServer();
+          onBackToMenu();
+        },
+      });
+      return;
     }
     onBackToMenu();
   };
@@ -124,10 +143,26 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
     try {
       setError(null);
       await invoke("stop_server");
+      setServerAddresses([]);
     } catch (err) {
       setError(String(err));
     }
   };
+
+  // Fetch server addresses when server is running
+  useEffect(() => {
+    if (serverState.isRunning) {
+      invoke<string[]>("get_server_addresses")
+        .then((addresses) => {
+          setServerAddresses(addresses);
+        })
+        .catch((err) => {
+          console.error("Failed to get server addresses:", err);
+        });
+    } else {
+      setServerAddresses([]);
+    }
+  }, [serverState.isRunning]);
 
   const handleSendMessage = async () => {
     if (!messageContent.trim()) {
@@ -330,7 +365,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                 </span>
                 {" - "}<span style={{ color: "var(--text-color)" }}>ポート</span> <strong style={{ fontSize: "1.1rem", color: "var(--text-color)" }}>{serverState.port}</strong>
               </p>
-              <div style={{ display: "flex", gap: "0.5rem" }}>
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                 <button
                   onClick={handleStopServer}
                   style={{
@@ -352,19 +387,183 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                     padding: "0.5rem 1.5rem",
                     fontSize: "1rem",
                     fontWeight: "600",
-                    backgroundColor: "#8b5cf6",
+                    backgroundColor: showMonitorManagement ? "#6b7280" : "#8b5cf6",
                     color: "white",
-                    border: "none",
+                    border: showMonitorManagement ? "2px solid #8b5cf6" : "none",
                     borderRadius: "4px",
                     cursor: "pointer",
+                    transition: "all 0.2s ease",
                   }}
                 >
-                  📺 モニター管理
+                  {showMonitorManagement ? "📺 モニター管理 ▼" : "📺 モニター管理"}
                 </button>
               </div>
             </div>
           )}
         </div>
+
+        {/* Web接続情報 */}
+        {serverState.isRunning && serverAddresses.length > 0 && (
+          <div
+            style={{
+              border: "2px solid var(--accent-color)",
+              padding: "1rem",
+              borderRadius: "8px",
+              backgroundColor: "var(--card-bg)",
+            }}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: "0.75rem", color: "var(--text-color)", fontSize: "1rem" }}>
+              📱 Web キャスター接続
+            </h3>
+            <p style={{ margin: "0 0 0.75rem 0", fontSize: "0.9rem", color: "var(--muted-text)" }}>
+              スマホやタブレットのブラウザから以下のURLにアクセス
+            </p>
+            
+            {/* Primary Address */}
+            <div 
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                marginBottom: "0.5rem",
+                padding: "0.5rem",
+                backgroundColor: "var(--secondary-bg)",
+                borderRadius: "4px",
+              }}
+            >
+              <code style={{ 
+                flex: 1, 
+                fontSize: "0.9rem", 
+                color: "var(--accent-color)",
+                fontWeight: "600",
+              }}>
+                {serverAddresses[0]}
+              </code>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(serverAddresses[0]);
+                  showToast('URLをコピーしました', 'success');
+                }}
+                style={{
+                  padding: "0.25rem 0.75rem",
+                  fontSize: "0.85rem",
+                  backgroundColor: "var(--accent-color)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              >
+                📋 コピー
+              </button>
+            </div>
+
+            {/* Additional Addresses (collapsible) */}
+            {serverAddresses.length > 1 && (
+              <>
+                <button
+                  onClick={() => setShowAllAddresses(!showAllAddresses)}
+                  style={{
+                    padding: "0.5rem 1rem",
+                    fontSize: "0.85rem",
+                    fontWeight: "600",
+                    backgroundColor: "var(--secondary-bg)",
+                    color: "var(--text-color)",
+                    border: "1px solid var(--card-border)",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    marginBottom: "0.5rem",
+                    width: "100%",
+                    textAlign: "left",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <span>{showAllAddresses ? "▼" : "▶"}</span>
+                  <span>他のアドレスを{showAllAddresses ? "隠す" : "表示"} ({serverAddresses.length - 1}個)</span>
+                </button>
+                
+                {showAllAddresses && serverAddresses.slice(1).map((address, index) => (
+                  <div 
+                    key={index}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      marginBottom: "0.5rem",
+                      padding: "0.5rem",
+                      backgroundColor: "var(--secondary-bg)",
+                      borderRadius: "4px",
+                      marginLeft: "1rem",
+                    }}
+                  >
+                    <code style={{ 
+                      flex: 1, 
+                      fontSize: "0.85rem", 
+                      color: "var(--text-color)",
+                      fontWeight: "500",
+                    }}>
+                      {address}
+                    </code>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(address);
+                        showToast('URLをコピーしました', 'success');
+                      }}
+                      style={{
+                        padding: "0.25rem 0.75rem",
+                        fontSize: "0.85rem",
+                        backgroundColor: "var(--accent-color)",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      📋 コピー
+                    </button>
+                  </div>
+                ))}
+              </>
+            )}
+            
+            <button
+              onClick={() => setShowQRCode(!showQRCode)}
+              style={{
+                marginTop: "0.5rem",
+                padding: "0.5rem 1rem",
+                fontSize: "0.9rem",
+                fontWeight: "600",
+                backgroundColor: showQRCode ? "#6b7280" : "var(--accent-color)",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              {showQRCode ? "📱 QRコードを隠す" : "📱 QRコードを表示"}
+            </button>
+            
+            {showQRCode && serverAddresses[0] && (
+              <div style={{ 
+                marginTop: "1rem", 
+                padding: "1rem",
+                backgroundColor: "white",
+                borderRadius: "8px",
+                display: "flex",
+                justifyContent: "center",
+              }}>
+                <QRCodeSVG 
+                  value={serverAddresses[0]} 
+                  size={200}
+                  level="M"
+                  includeMargin={true}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 現在表示中のカンペ（モニターごと） */}
         {serverState.isRunning && availableMonitors.length > 0 && (
@@ -456,12 +655,29 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
               border: "2px solid #8b5cf6",
               padding: "1.5rem",
               borderRadius: "8px",
-              backgroundColor: "white",
+              backgroundColor: "var(--card-bg)",
             }}
           >
-            <h3 style={{ marginTop: 0, color: "#8b5cf6", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              📺 仮想モニター管理
-            </h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h3 style={{ margin: 0, color: "#8b5cf6", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                📺 仮想モニター管理
+              </h3>
+              <button
+                onClick={() => setShowMonitorManagement(false)}
+                style={{
+                  padding: "0.5rem 1rem",
+                  fontSize: "0.9rem",
+                  fontWeight: "600",
+                  backgroundColor: "#6b7280",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              >
+                ✕ 閉じる
+              </button>
+            </div>
 
             {/* Add Monitor Form */}
             <div style={{
@@ -469,14 +685,14 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
               flexDirection: "column",
               gap: "1rem",
               padding: "1rem",
-              backgroundColor: "#fafafa",
+              backgroundColor: "var(--secondary-bg)",
               borderRadius: "6px",
               marginBottom: "1rem",
             }}>
-              <h4 style={{ margin: 0, fontSize: "0.95rem", color: "#333" }}>➕ 新しいモニターを追加</h4>
+              <h4 style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-color)" }}>➕ 新しいモニターを追加</h4>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "#555" }}>
+                <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--text-color)" }}>
                   モニター名 <span style={{ color: "#ef4444" }}>*</span>
                 </label>
                 <input
@@ -487,14 +703,16 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                   style={{
                     padding: "0.75rem",
                     borderRadius: "4px",
-                    border: "1px solid #ccc",
+                    border: "1px solid var(--card-border)",
+                    backgroundColor: "var(--bg-color)",
+                    color: "var(--text-color)",
                     fontSize: "1rem",
                   }}
                 />
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "#555" }}>
+                <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--text-color)" }}>
                   説明（任意）
                 </label>
                 <input
@@ -505,7 +723,9 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                   style={{
                     padding: "0.75rem",
                     borderRadius: "4px",
-                    border: "1px solid #ccc",
+                    border: "1px solid var(--card-border)",
+                    backgroundColor: "var(--bg-color)",
+                    color: "var(--text-color)",
                     fontSize: "1rem",
                   }}
                 />
@@ -513,7 +733,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
 
               <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", flex: "0 0 auto" }}>
-                  <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "#555" }}>
+                  <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--text-color)" }}>
                     識別色
                   </label>
                   <input
@@ -525,7 +745,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                       height: "40px",
                       padding: "0.25rem",
                       borderRadius: "4px",
-                      border: "1px solid #ccc",
+                      border: "1px solid var(--card-border)",
                       cursor: "pointer",
                     }}
                   />
@@ -567,7 +787,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                   <div style={{
                     padding: "2rem",
                     textAlign: "center",
-                    color: "#999",
+                    color: "var(--muted-text)",
                     fontStyle: "italic",
                   }}>
                     まだモニターが登録されていません
@@ -582,9 +802,9 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                         gap: "1rem",
                         padding: "1rem",
                         borderRadius: "6px",
-                        backgroundColor: "#ffffff",
-                        border: "2px solid #e5e7eb",
-                        borderLeft: monitor.color ? `6px solid ${monitor.color}` : "6px solid #ccc",
+                        backgroundColor: "var(--bg-color)",
+                        border: "2px solid var(--card-border)",
+                        borderLeft: monitor.color ? `6px solid ${monitor.color}` : "6px solid var(--card-border)",
                         transition: "all 0.2s ease",
                       }}
                     >
@@ -592,7 +812,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                         <div style={{
                           fontWeight: "700",
                           fontSize: "1rem",
-                          color: "#1f2937",
+                          color: "var(--text-color)",
                           marginBottom: "0.25rem",
                         }}>
                           📺 {monitor.name}
@@ -600,8 +820,8 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                             marginLeft: "0.5rem",
                             fontSize: "0.85rem",
                             fontWeight: "500",
-                            color: "#6b7280",
-                            backgroundColor: "#f3f4f6",
+                            color: "var(--muted-text)",
+                            backgroundColor: "var(--secondary-bg)",
                             padding: "0.125rem 0.5rem",
                             borderRadius: "3px",
                           }}>
@@ -611,7 +831,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                         {monitor.description && (
                           <div style={{
                             fontSize: "0.85rem",
-                            color: "#6b7280",
+                            color: "var(--muted-text)",
                             fontStyle: "italic",
                           }}>
                             {monitor.description}
@@ -655,9 +875,29 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
               border: "2px solid #8b5cf6",
               padding: "1.5rem",
               borderRadius: "8px",
-              backgroundColor: "white",
+              backgroundColor: "var(--card-bg)",
             }}
           >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h3 style={{ margin: 0, color: "#8b5cf6", fontSize: "1.1rem" }}>
+                📝 テンプレート管理
+              </h3>
+              <button
+                onClick={() => setShowTemplateManagement(false)}
+                style={{
+                  padding: "0.5rem 1rem",
+                  fontSize: "0.9rem",
+                  fontWeight: "600",
+                  backgroundColor: "#6b7280",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              >
+                ✕ 閉じる
+              </button>
+            </div>
             <TemplateManager
               mode="server"
               serverTemplates={templates.config.server_templates}
@@ -694,14 +934,15 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                   padding: "0.5rem 1rem",
                   fontSize: "0.9rem",
                   fontWeight: "600",
-                  backgroundColor: "var(--accent-color)",
+                  backgroundColor: showTemplateManagement ? "#6b7280" : "var(--accent-color)",
                   color: "white",
-                  border: "none",
+                  border: showTemplateManagement ? "2px solid var(--accent-color)" : "none",
                   borderRadius: "4px",
                   cursor: "pointer",
+                  transition: "all 0.2s ease",
                 }}
               >
-                📝 テンプレート
+                {showTemplateManagement ? "📝 テンプレート ▼" : "📝 テンプレート"}
               </button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem", flex: 1 }}>
@@ -1290,6 +1531,15 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
           animation: spin 0.8s linear infinite;
         }
       `}</style>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog({ isOpen: false, message: "", onConfirm: () => {} })}
+        confirmButtonColor="#ef4444"
+      />
     </div>
   );
 }
