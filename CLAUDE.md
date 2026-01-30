@@ -10,17 +10,21 @@ Bi-Kanpe is a bidirectional cue card (kanpe) system for event management. It ena
 
 ### Workspace Structure
 
-This is a Rust cargo workspace with three core crates and a Tauri desktop application:
+This is a Rust cargo workspace with four core crates, a Tauri desktop application, and a StreamDeck plugin:
 
 ```
 bi-kanpe/
 ├── crates/
-│   ├── kanpe-core/      # Protocol definitions & message types (no I/O)
-│   ├── kanpe-server/    # WebSocket server for director mode
-│   └── kanpe-client/    # WebSocket client for caster mode
-└── app/                 # Tauri desktop application
-    ├── src-tauri/       # Rust backend (Tauri commands, state management)
-    └── src/             # React frontend (UI components, hooks)
+│   ├── kanpe-core/              # Protocol definitions & message types (no I/O)
+│   ├── kanpe-server/            # WebSocket server for director mode
+│   ├── kanpe-client/            # WebSocket client for caster mode
+│   └── kanpe-streamdeck-server/ # WebSocket server for StreamDeck integration
+├── app/                         # Tauri desktop application
+│   ├── src-tauri/               # Rust backend (Tauri commands, state management)
+│   └── src/                     # React frontend (UI components, hooks)
+└── streamdeck-plugin/           # StreamDeck plugin (TypeScript)
+    ├── src/                     # Plugin source code
+    └── com.bi-kanpe.streamdeck.sdPlugin/ # Plugin bundle
 ```
 
 ### Key Architectural Concepts
@@ -42,8 +46,10 @@ bi-kanpe/
 - `kanpe-core`: Pure message protocol (serde types, no I/O)
 - `kanpe-server`: WebSocket server, client management, broadcast system
 - `kanpe-client`: WebSocket client connection management
+- `kanpe-streamdeck-server`: WebSocket server for StreamDeck plugin communication
 - `app/src-tauri`: Tauri integration layer (commands, state, event emission to frontend)
 - `app/src`: React UI (mode selector, server view, client view)
+- `streamdeck-plugin`: StreamDeck plugin (TypeScript, WebSocket client)
 
 ## Build & Development Commands
 
@@ -54,14 +60,14 @@ bi-kanpe/
 ### Development Mode
 ```bash
 cd app
-npm install
-npm run tauri dev
+bun install
+bun run tauri dev
 ```
 
 ### Production Build
 ```bash
 cd app
-npm run tauri build
+bun run tauri build
 ```
 Output will be in `app/src-tauri/target/release/`
 
@@ -206,3 +212,99 @@ Listen in React:
 import { listen } from '@tauri-apps/api/event';
 const unlisten = await listen('event-name', (event) => { /* handle */ });
 ```
+
+## StreamDeck Integration
+
+### Architecture
+
+The StreamDeck integration consists of three components:
+
+1. **kanpe-streamdeck-server** (Rust crate): WebSocket server that listens for connections from StreamDeck plugin
+2. **Tauri commands** (`streamdeck_commands.rs`): Bridge between StreamDeck server and client state
+3. **StreamDeck plugin** (TypeScript): Elgato StreamDeck plugin with actions for sending feedback
+
+### Protocol
+
+StreamDeck plugin connects to `localhost:9877` (default) via WebSocket.
+
+**Messages: StreamDeck → Caster App**
+```json
+// Send new feedback
+{
+  "type": "send_feedback",
+  "content": "Message content",
+  "feedback_type": "Ack"
+}
+
+// React to latest message
+{
+  "type": "react_to_latest",
+  "feedback_type": "Ack"
+}
+
+// Get current state
+{
+  "type": "get_state"
+}
+```
+
+**Messages: Caster App → StreamDeck**
+```json
+// Operation result
+{
+  "type": "result",
+  "success": true,
+  "error": null
+}
+
+// State update
+{
+  "type": "state_update",
+  "connected": true,
+  "latest_message": { /* KanpeMessagePayload */ },
+  "monitors": [ /* VirtualMonitor[] */ ]
+}
+```
+
+### Key Files
+
+**Rust Backend:**
+- `crates/kanpe-streamdeck-server/src/server.rs` - WebSocket server implementation
+- `crates/kanpe-streamdeck-server/src/protocol.rs` - Protocol message types
+- `app/src-tauri/src/commands/streamdeck_commands.rs` - Tauri commands
+- `app/src-tauri/src/state.rs` - AppState with streamdeck_server field
+
+**Frontend:**
+- `app/src/components/ClientView.tsx` - StreamDeck settings UI
+
+**StreamDeck Plugin:**
+- `streamdeck-plugin/src/plugin.ts` - Main plugin entry point
+- `streamdeck-plugin/src/ws-client.ts` - WebSocket client
+- `streamdeck-plugin/src/actions/send-feedback.ts` - Send Feedback action
+- `streamdeck-plugin/src/actions/react-to-latest.ts` - React to Latest action
+
+### Building StreamDeck Plugin
+
+```bash
+cd streamdeck-plugin
+bun install
+bun run build
+```
+
+Output: `com.bi-kanpe.streamdeck.sdPlugin/` (installable plugin bundle)
+
+### Usage Flow
+
+1. User starts caster mode and connects to director
+2. User enables StreamDeck server in caster app UI
+3. StreamDeck plugin connects to the server
+4. User presses StreamDeck button
+5. Plugin sends request to caster app
+6. Caster app sends feedback to director via existing client connection
+
+### Important Implementation Details
+
+- **Client State Access**: StreamDeck commands access client state via `AppState.client`
+- **Latest Message Tracking**: `KanpeClient` stores latest received message in `Arc<RwLock<Option<KanpeMessagePayload>>>`
+- **Event Flow**: StreamDeck events → Tauri command → KanpeClient → WebSocket → Director
+- **Connection Management**: StreamDeck server lifecycle tied to client connection state

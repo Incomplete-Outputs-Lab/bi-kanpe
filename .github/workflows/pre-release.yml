@@ -55,6 +55,24 @@ jobs:
           cd app
           bun install
 
+      - name: Install StreamDeck plugin dependencies
+        run: |
+          cd streamdeck-plugin
+          bun install
+
+      - name: Build StreamDeck plugin
+        run: |
+          cd streamdeck-plugin
+          bun run build
+
+      - name: Install StreamDeck CLI
+        run: npm install -g @elgato/cli
+
+      - name: Package StreamDeck plugin
+        run: |
+          cd streamdeck-plugin
+          streamdeck pack com.misei.bi-kanpe.sdPlugin --force
+
       - name: Set build environment variables
         shell: bash
         run: |
@@ -125,6 +143,12 @@ jobs:
             - **Windows**: `.msi` file
             - **macOS**: `.dmg` file
             - **Linux**: `.AppImage` file
+            - **StreamDeck Plugin**: `com.misei.bi-kanpe.streamDeckPlugin` file
+
+            ### StreamDeck Plugin Installation
+            1. Download the `com.misei.bi-kanpe.streamDeckPlugin` file
+            2. Double-click to install to your StreamDeck
+            3. Configure the plugin in the Bi-Kanpe caster app
 
             ### How to Help
             1. Download and test this pre-release
@@ -138,3 +162,5 @@ jobs:
           prerelease: true
           includeUpdaterJson: true
           args: ${{ matrix.args }}
+          # Include StreamDeck plugin as release asset (only from Windows build to avoid duplicates)
+          artifactPaths: ${{ matrix.platform == 'windows-latest' && './streamdeck-plugin/com.misei.bi-kanpe.streamDeckPlugin' || '' }}

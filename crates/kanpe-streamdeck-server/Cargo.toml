@@ -1,5 +1,5 @@
 [package]
-name = "kanpe-server"
+name = "kanpe-streamdeck-server"
 version = "0.1.0"
 edition = "2024"
 
@@ -13,6 +13,3 @@ anyhow = { workspace = true }
 thiserror = { workspace = true }
 axum = { version = "0.7", features = ["ws"] }
 tower-http = { version = "0.6", features = ["cors"] }
-rust-embed = "8.0"
-mime_guess = "2.0"
-tower = "0.5"

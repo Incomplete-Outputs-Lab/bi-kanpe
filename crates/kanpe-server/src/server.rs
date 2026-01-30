@@ -6,7 +6,7 @@ use crate::events::ServerEvent;
 use crate::monitor_manager::MonitorManager;
 use axum::{
     extract::{ws::WebSocketUpgrade, State},
-    response::{Html, IntoResponse, Response},
+    response::Response,
     routing::get,
     Router,
 };

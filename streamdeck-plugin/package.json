@@ -1,0 +1,38 @@
+{
+  "name": "bi-kanpe-streamdeck-plugin",
+  "version": "1.0.0",
+  "description": "StreamDeck plugin for Bi-Kanpe caster integration",
+  "main": "dist/plugin.js",
+  "scripts": {
+    "build": "rollup -c",
+    "watch": "rollup -c -w",
+    "clean": "rimraf dist",
+    "validate": "streamdeck validate com.misei.bi-kanpe.sdPlugin",
+    "package": "bun run build && streamdeck pack com.misei.bi-kanpe.sdPlugin --force"
+  },
+  "keywords": [
+    "streamdeck",
+    "elgato",
+    "bi-kanpe"
+  ],
+  "author": "bi-kanpe",
+  "license": "MIT",
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "@tsconfig/node20": "^20.1.2",
+    "@types/node": "^20.11.0",
+    "@types/ws": "^8.5.10",
+    "rimraf": "^5.0.5",
+    "rollup": "^4.9.6",
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@elgato/streamdeck": "^2.0.1",
+    "ws": "^8.16.0",
+    "zod": "^4.3.6"
+  }
+}

@@ -30,4 +30,5 @@ local-ip-address = "0.6"
 kanpe-core = { workspace = true }
 kanpe-server = { workspace = true }
 kanpe-client = { workspace = true }
+kanpe-streamdeck-server = { workspace = true }
 

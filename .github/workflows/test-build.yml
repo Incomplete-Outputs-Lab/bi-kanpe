@@ -40,10 +40,33 @@ jobs:
         with:
           node-version: lts/*
 
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
       - name: Install frontend dependencies
         run: |
           cd app
-          npm install
+          bun install
+
+      - name: Install StreamDeck plugin dependencies
+        run: |
+          cd streamdeck-plugin
+          bun install
+
+      - name: Build StreamDeck plugin
+        run: |
+          cd streamdeck-plugin
+          bun run build
+
+      - name: Install StreamDeck CLI
+        run: npm install -g @elgato/cli
+
+      - name: Validate StreamDeck plugin
+        run: |
+          cd streamdeck-plugin
+          streamdeck validate com.misei.bi-kanpe.sdPlugin
 
       - name: Set build environment variables
         shell: bash

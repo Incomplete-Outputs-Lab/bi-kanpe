@@ -15,6 +15,8 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
   const [showDisconnectWarning, setShowDisconnectWarning] = useState<boolean>(true);
+  const [streamDeckPort, setStreamDeckPort] = useState<number>(9877);
+  const [streamDeckStatus, setStreamDeckStatus] = useState<boolean>(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     message: string;
@@ -108,11 +110,50 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
   const handleDisconnect = async () => {
     try {
       setError(null);
+      // Stop StreamDeck server if running
+      if (streamDeckStatus) {
+        await invoke("stop_streamdeck_server");
+        setStreamDeckStatus(false);
+      }
       await invoke("disconnect_from_server");
     } catch (err) {
       setError(String(err));
     }
   };
+
+  const handleStreamDeckToggle = async () => {
+    try {
+      if (streamDeckStatus) {
+        // Stop StreamDeck server
+        await invoke("stop_streamdeck_server");
+        setStreamDeckStatus(false);
+      } else {
+        // Start StreamDeck server
+        await invoke("start_streamdeck_server", { port: streamDeckPort });
+        setStreamDeckStatus(true);
+      }
+    } catch (err) {
+      setError(String(err));
+    }
+  };
+
+  // Check StreamDeck status periodically
+  useEffect(() => {
+    if (!clientState.isConnected) return;
+
+    const checkStatus = async () => {
+      try {
+        const status = await invoke<boolean>("get_streamdeck_status");
+        setStreamDeckStatus(status);
+      } catch (err) {
+        console.error("Failed to check StreamDeck status:", err);
+      }
+    };
+
+    checkStatus();
+    const interval = setInterval(checkStatus, 2000);
+    return () => clearInterval(interval);
+  }, [clientState.isConnected]);
 
   const handleBackToMenu = async () => {
     if (clientState.isConnected) {
@@ -235,6 +276,81 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
                 💡 カンペ側に表示される識別名
               </p>
             </div>
+
+            {clientState.isConnected && (
+              <>
+                {/* StreamDeck Integration Section */}
+                <div style={{ 
+                  padding: "1rem", 
+                  borderRadius: "6px", 
+                  backgroundColor: "var(--card-bg)",
+                  border: "1px solid var(--card-border)",
+                  display: "flex", 
+                  flexDirection: "column", 
+                  gap: "0.75rem" 
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div>
+                      <label style={{ fontWeight: "600", color: "var(--text-color)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        🎮 StreamDeck統合
+                      </label>
+                      <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.85rem", color: "var(--muted-text)" }}>
+                        StreamDeckプラグインからの接続を許可します
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleStreamDeckToggle}
+                      style={{
+                        padding: "0.5rem 1.5rem",
+                        fontSize: "1rem",
+                        fontWeight: "600",
+                        backgroundColor: streamDeckStatus ? "#ef4444" : "var(--accent-color)",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {streamDeckStatus ? "停止" : "起動"}
+                    </button>
+                  </div>
+                  
+                  {!streamDeckStatus && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                      <label style={{ fontWeight: "600", color: "var(--text-color)", fontSize: "0.9rem" }}>ポート番号:</label>
+                      <input
+                        type="number"
+                        value={streamDeckPort}
+                        onChange={(e) => setStreamDeckPort(parseInt(e.target.value) || 9877)}
+                        placeholder="9877"
+                        style={{
+                          padding: "0.5rem",
+                          borderRadius: "4px",
+                          border: "1px solid var(--input-border)",
+                          fontSize: "0.95rem",
+                          width: "150px",
+                        }}
+                        disabled={streamDeckStatus}
+                      />
+                    </div>
+                  )}
+
+                  {streamDeckStatus && (
+                    <div style={{ 
+                      padding: "0.75rem",
+                      backgroundColor: "rgba(34, 197, 94, 0.1)",
+                      color: "#22c55e",
+                      border: "1px solid #22c55e",
+                      borderRadius: "4px",
+                      fontWeight: "600",
+                      fontSize: "0.9rem"
+                    }}>
+                      ✓ StreamDeckサーバーが起動中 (ポート: {streamDeckPort})
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
 
             {clientState.isConnected && availableMonitors.length > 0 && (
               <>

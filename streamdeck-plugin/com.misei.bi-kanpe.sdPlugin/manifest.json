@@ -1,0 +1,68 @@
+{
+	"Name": "BiKanpe",
+	"Version": "0.1.0.0",
+	"Author": "Misei",
+	"URL": "https://github.com/Incomplete-Outputs-Lab/bi-kanpe",
+	"Actions": [
+		{
+			"Name": "Send Feedback",
+			"UUID": "com.misei.bi-kanpe.send-feedback",
+			"Icon": "imgs/icon",
+			"Tooltip": "Send custom feedback message to director",
+			"PropertyInspectorPath": "ui/send-feedback.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/icon",
+					"TitleAlignment": "middle"
+				}
+			]
+		},
+		{
+			"Name": "React to Latest",
+			"UUID": "com.misei.bi-kanpe.react-to-latest",
+			"Icon": "imgs/icon",
+			"Tooltip": "Send quick reaction to the most recent message",
+			"PropertyInspectorPath": "ui/react-to-latest.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/icon",
+					"TitleAlignment": "middle"
+				},
+				{
+					"Image": "imgs/icon",
+					"TitleAlignment": "middle"
+				}
+			]
+		}
+	],
+	"Category": "BiKanpe",
+	"CategoryIcon": "imgs/icon",
+	"CodePath": "bin/plugin.js",
+	"Description": "Bi-Kanpe BiDirectional Kanban Paper System - Client Stream Deck Plugin",
+	"Icon": "imgs/icon",
+	"SDKVersion": 3,
+	"Software": {
+		"MinimumVersion": "7.0"
+	},
+	"OS": [
+		{
+			"Platform": "mac",
+			"MinimumVersion": "12"
+		},
+		{
+			"Platform": "windows",
+			"MinimumVersion": "10"
+		}
+	],
+	"Nodejs": {
+		"Version": "20",
+		"Debug": "enabled"
+	},
+	"UUID": "com.misei.bi-kanpe"
+}

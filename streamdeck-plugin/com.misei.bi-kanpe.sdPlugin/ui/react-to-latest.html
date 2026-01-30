@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>React to Latest Settings</title>
+	
+	<script src="https://sdpi-components.dev/releases/v3/sdpi-components.js"></script>
+</head>
+<body>
+	<sdpi-item label="Server Address">
+		<sdpi-textfield 
+			setting="serverAddress" 
+			placeholder="localhost:9877"
+		></sdpi-textfield>
+	</sdpi-item>
+
+	<sdpi-item label="Reaction Type">
+		<sdpi-select setting="feedbackType">
+			<option value="Ack" selected>✓ 了解 (Acknowledgment)</option>
+			<option value="Question">❓ 質問 (Question)</option>
+			<option value="Issue">⚠️ 問題 (Issue)</option>
+			<option value="Info">ℹ️ 情報 (Information)</option>
+		</sdpi-select>
+	</sdpi-item>
+
+	<sdpi-item label="How it works">
+		<details class="sdpi-item-info" open>
+			<summary>Usage Guide</summary>
+			<ul>
+				<li>The button appearance changes when a new message arrives</li>
+				<li>Press to send a quick reaction to the latest message</li>
+				<li>Button returns to normal state after sending</li>
+			</ul>
+		</details>
+	</sdpi-item>
+
+	<sdpi-item label="Setup">
+		<details class="sdpi-item-info">
+			<summary>Setup Instructions</summary>
+			<ol>
+				<li>Launch Bi-Kanpe in Caster Mode</li>
+				<li>Connect to the director's server</li>
+				<li>Enable StreamDeck server in the app</li>
+				<li>Enter the server address (default: localhost:9877)</li>
+				<li>Choose your preferred reaction type</li>
+			</ol>
+		</details>
+	</sdpi-item>
+
+</body>
+</html>
