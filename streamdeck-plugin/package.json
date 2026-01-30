@@ -6,7 +6,9 @@
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -c -w",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "validate": "streamdeck validate com.misei.bi-kanpe.sdPlugin",
+    "package": "bun run build && streamdeck pack com.misei.bi-kanpe.sdPlugin --force"
   },
   "keywords": [
     "streamdeck",

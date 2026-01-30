@@ -2,7 +2,7 @@
 	"Name": "BiKanpe",
 	"Version": "0.1.0.0",
 	"Author": "Misei",
-	"URL": "https://github.com/Flowing-Code/bi-kanpe",
+	"URL": "https://github.com/Incomplete-Outputs-Lab/bi-kanpe",
 	"Actions": [
 		{
 			"Name": "Send Feedback",
@@ -48,7 +48,7 @@
 	"Icon": "imgs/icon",
 	"SDKVersion": 3,
 	"Software": {
-		"MinimumVersion": "6.9"
+		"MinimumVersion": "7.0"
 	},
 	"OS": [
 		{

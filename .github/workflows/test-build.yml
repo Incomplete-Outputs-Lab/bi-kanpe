@@ -50,6 +50,24 @@ jobs:
           cd app
           bun install
 
+      - name: Install StreamDeck plugin dependencies
+        run: |
+          cd streamdeck-plugin
+          bun install
+
+      - name: Build StreamDeck plugin
+        run: |
+          cd streamdeck-plugin
+          bun run build
+
+      - name: Install StreamDeck CLI
+        run: npm install -g @elgato/cli
+
+      - name: Validate StreamDeck plugin
+        run: |
+          cd streamdeck-plugin
+          streamdeck validate com.misei.bi-kanpe.sdPlugin
+
       - name: Set build environment variables
         shell: bash
         run: |

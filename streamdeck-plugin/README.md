@@ -179,7 +179,34 @@ bun run watch
 
 # Clean build artifacts
 bun run clean
+
+# Validate plugin manifest
+bun run validate
+
+# Create installable plugin package
+bun run package
 ```
+
+**Note:** The `package` command requires `@elgato/cli` to be installed:
+```bash
+npm install -g @elgato/cli
+```
+
+### Automated Builds
+
+The plugin is automatically built and packaged by GitHub Actions:
+
+- **Test Builds**: On every push to main/develop and pull requests
+  - Validates that the plugin builds successfully
+  - No artifacts are published
+
+- **Release Builds**: On version tags (e.g., `v1.0.0`)
+  - Plugin is built and packaged as `.streamDeckPlugin`
+  - Automatically attached to GitHub releases
+  - Download from the releases page
+
+- **Pre-Release Builds**: On pre-release tags (e.g., `v1.0.0-beta.1`)
+  - Same as release builds but marked as pre-release
 
 ### Adding Icons
 
