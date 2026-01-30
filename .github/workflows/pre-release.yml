@@ -65,13 +65,18 @@ jobs:
           cd streamdeck-plugin
           bun run build
 
-      - name: Install StreamDeck CLI
-        run: npm install -g @elgato/cli
-
-      - name: Package StreamDeck plugin
+      - name: Create StreamDeck plugin distribution directory
+        shell: bash
         run: |
-          cd streamdeck-plugin
-          streamdeck pack com.misei.bi-kanpe.sdPlugin --force
+          mkdir -p streamdeck-plugin/dist
+
+      - name: Export StreamDeck plugin using Distribution Tool
+        if: matrix.platform == 'windows-latest' || matrix.platform == 'macos-latest'
+        uses: AdamCarballo/streamdeck-distribution-tool@v1
+        with:
+          input: com.misei.bi-kanpe.sdPlugin
+          output: dist
+          working-directory: streamdeck-plugin
 
       - name: Set build environment variables
         shell: bash
@@ -163,4 +168,4 @@ jobs:
           includeUpdaterJson: true
           args: ${{ matrix.args }}
           # Include StreamDeck plugin as release asset (only from Windows build to avoid duplicates)
-          artifactPaths: ${{ matrix.platform == 'windows-latest' && './streamdeck-plugin/com.misei.bi-kanpe.streamDeckPlugin' || '' }}
+          artifactPaths: ${{ matrix.platform == 'windows-latest' && './streamdeck-plugin/dist/com.misei.bi-kanpe.streamDeckPlugin' || '' }}
