@@ -35,7 +35,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDIxNkQzNTc1NkFGMUQ2OTcKUldTWDF2RnFkVFZ0SWZJWEtvTHd1RVhKMkx3UjRQaVBHS0lmWVZEblRFYndSS1RoTHQ1QTgzSjkK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDBERDkwMEI5QTBFMTE3NTUKUldSVkYrR2d1UURaRFYyOEZYOWZWSUNHdWdQWlFvL0hnZDJxQ1BTb1lPRkR1UGthSnl4Z0lsNSsK",
       "endpoints": [
         "https://github.com/Incomplete-Outputs-Lab/bi-kanpe/releases/latest/download/latest.json"
       ],
