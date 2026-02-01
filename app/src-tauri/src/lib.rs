@@ -115,7 +115,7 @@ async fn check_for_updates(app: tauri::AppHandle) -> Result<(), Box<dyn std::err
             "Update available: {} (current: {})",
             update.version, update.current_version
         );
-        println!("Update date: {}", update.date);
+        println!("Update date: {:?}", update.date);
         
         let mut downloaded = 0u64;
         
