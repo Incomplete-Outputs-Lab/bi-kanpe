@@ -1,10 +1,12 @@
 import { ThemeToggle } from './ThemeToggle';
+import { useAppVersion } from '../hooks/useAppVersion';
 
 interface ModeSelectorProps {
   onSelectMode: (mode: "server" | "client") => void;
 }
 
 export function ModeSelector({ onSelectMode }: ModeSelectorProps) {
+  const { versionInfo } = useAppVersion();
   return (
     <div
       style={{
@@ -258,6 +260,28 @@ export function ModeSelector({ onSelectMode }: ModeSelectorProps) {
           カンペは複数のキャスターに指示を出し、キャスターは受け取った指示を表示します
         </p>
       </div>
+
+      {versionInfo && (
+        <div
+          style={{
+            marginTop: "1rem",
+            color: "rgba(255,255,255,0.6)",
+            fontSize: "0.75rem",
+            textAlign: "center",
+            fontFamily: "monospace",
+          }}
+        >
+          <p style={{ margin: 0 }}>
+            v{versionInfo.version}
+            {versionInfo.gitCommit && ` (${versionInfo.gitCommit})`}
+          </p>
+          {versionInfo.buildTimestamp && (
+            <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.7rem" }}>
+              Built: {versionInfo.buildTimestamp}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
