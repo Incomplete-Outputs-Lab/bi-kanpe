@@ -10,8 +10,27 @@ use tauri::Manager;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_process::init())
+        .setup(|app| {
+            #[cfg(desktop)]
+            {
+                // Initialize updater plugin
+                app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
+                
+                // Spawn auto-update check task
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = check_for_updates(handle).await {
+                        eprintln!("Failed to check for updates: {}", e);
+                    }
+                });
+            }
+            Ok(())
+        })
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![
+            // App commands
+            commands::get_app_version,
             // Server commands
             commands::start_server,
             commands::stop_server,
@@ -83,4 +102,44 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(desktop)]
+async fn check_for_updates(app: tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    use tauri_plugin_updater::UpdaterExt;
+
+    println!("Checking for updates...");
+    
+    if let Some(update) = app.updater()?.check().await? {
+        println!(
+            "Update available: {} (current: {})",
+            update.version, update.current_version
+        );
+        println!("Update date: {}", update.date);
+        
+        let mut downloaded = 0u64;
+        
+        // Download and install the update
+        update
+            .download_and_install(
+                |chunk_length, content_length| {
+                    downloaded += chunk_length as u64;
+                    if let Some(total) = content_length {
+                        let progress = (downloaded as f64 / total as f64) * 100.0;
+                        println!("Download progress: {:.1}%", progress);
+                    }
+                },
+                || {
+                    println!("Download finished, installing update...");
+                },
+            )
+            .await?;
+        
+        println!("Update installed successfully, restarting...");
+        app.restart();
+    } else {
+        println!("No updates available");
+    }
+    
+    Ok(())
 }
