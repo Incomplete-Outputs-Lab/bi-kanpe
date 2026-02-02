@@ -3,9 +3,11 @@ import { ModeSelector } from "./components/ModeSelector";
 import { ServerView } from "./components/ServerView";
 import { ClientView } from "./components/ClientView";
 import MonitorPopout from "./components/MonitorPopout";
+import { DonationDialog } from "./components/DonationDialog";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ToastProvider } from "./contexts/ToastContext";
 import { ToastContainer } from "./components/Toast";
+import { useAppConfig } from "./hooks/useAppConfig";
 import "./App.css";
 
 type AppMode = "not_selected" | "server" | "client";
@@ -15,6 +17,8 @@ function App() {
   const [isPopout, setIsPopout] = useState(false);
   const [popoutMonitorId, setPopoutMonitorId] = useState<string | null>(null);
   const [popoutMonitorName, setPopoutMonitorName] = useState<string>("");
+  const [showDonationDialog, setShowDonationDialog] = useState(false);
+  const { checkFirstLaunch, markDonationPromptSeen } = useAppConfig();
 
   // Check if this is a popout window
   useEffect(() => {
@@ -26,6 +30,26 @@ function App() {
       setPopoutMonitorName(`Monitor ${monitorId}`); // Will be updated with real name from server
     }
   }, []);
+
+  // Check for first launch and show donation dialog
+  useEffect(() => {
+    const checkAndShowDonation = async () => {
+      // Only check on main window (not popout)
+      if (!isPopout) {
+        const isFirstLaunch = await checkFirstLaunch();
+        if (isFirstLaunch) {
+          setShowDonationDialog(true);
+        }
+      }
+    };
+
+    checkAndShowDonation();
+  }, [isPopout, checkFirstLaunch]);
+
+  const handleDonationDialogClose = async () => {
+    await markDonationPromptSeen();
+    setShowDonationDialog(false);
+  };
 
   const handleSelectMode = (selectedMode: "server" | "client") => {
     setMode(selectedMode);
@@ -56,6 +80,7 @@ function App() {
           {mode === "server" && <ServerView onBackToMenu={handleBackToModeSelection} />}
           {mode === "client" && <ClientView onBackToMenu={handleBackToModeSelection} />}
         </main>
+        <DonationDialog isOpen={showDonationDialog} onClose={handleDonationDialogClose} />
         <ToastContainer />
       </ToastProvider>
     </ThemeProvider>

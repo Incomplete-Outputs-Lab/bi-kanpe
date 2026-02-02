@@ -2,6 +2,7 @@ mod commands;
 mod config;
 mod state;
 mod templates;
+pub mod app_config;
 
 use state::{AppMode, AppState};
 use tauri::Manager;
@@ -31,6 +32,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             // App commands
             commands::get_app_version,
+            // Config commands
+            commands::check_first_launch,
+            commands::mark_donation_prompt_seen,
+            commands::get_app_config,
             // Server commands
             commands::start_server,
             commands::stop_server,

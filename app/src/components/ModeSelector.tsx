@@ -1,5 +1,6 @@
 import { ThemeToggle } from './ThemeToggle';
 import { useAppVersion } from '../hooks/useAppVersion';
+import { openUrl } from '@tauri-apps/plugin-opener';
 
 interface ModeSelectorProps {
   onSelectMode: (mode: "server" | "client") => void;
@@ -7,17 +8,30 @@ interface ModeSelectorProps {
 
 export function ModeSelector({ onSelectMode }: ModeSelectorProps) {
   const { versionInfo } = useAppVersion();
+
+  const handleSupportClick = async () => {
+    try {
+      await openUrl("http://subs.twitch.tv/flowingspdg");
+    } catch (error) {
+      console.error("Failed to open URL:", error);
+    }
+  };
+
   return (
     <div
+      className="scrollable"
       style={{
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
-        height: "100vh",
+        justifyContent: "flex-start",
+        minHeight: "100vh",
+        height: "100%",
         background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
         padding: "2rem",
+        paddingTop: "3rem",
         position: "relative",
+        overflowY: "auto",
       }}
     >
       <div style={{
@@ -259,6 +273,58 @@ export function ModeSelector({ onSelectMode }: ModeSelectorProps) {
         <p style={{ margin: 0 }}>
           カンペは複数のキャスターに指示を出し、キャスターは受け取った指示を表示します
         </p>
+      </div>
+
+      {/* Developer Info Section */}
+      <div
+        style={{
+          marginTop: "2rem",
+          padding: "1rem",
+          backgroundColor: "rgba(255, 255, 255, 0.1)",
+          borderRadius: "8px",
+          maxWidth: "500px",
+        }}
+      >
+        <p
+          style={{
+            margin: "0 0 0.75rem 0",
+            color: "rgba(255,255,255,0.9)",
+            fontSize: "0.85rem",
+            textAlign: "center",
+          }}
+        >
+          開発: <strong>未完成成果物研究所</strong>
+        </p>
+        <button
+          onClick={handleSupportClick}
+          style={{
+            width: "100%",
+            padding: "0.625rem 1rem",
+            fontSize: "0.9rem",
+            fontWeight: "600",
+            backgroundColor: "#9146FF",
+            color: "white",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.5rem",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-2px)";
+            e.currentTarget.style.boxShadow = "0 4px 12px rgba(145, 70, 255, 0.4)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "none";
+          }}
+        >
+          <span>💜</span>
+          開発をサポートする
+        </button>
       </div>
 
       {versionInfo && (
