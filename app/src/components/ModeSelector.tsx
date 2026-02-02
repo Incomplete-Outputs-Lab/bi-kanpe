@@ -1,6 +1,6 @@
 import { ThemeToggle } from './ThemeToggle';
 import { useAppVersion } from '../hooks/useAppVersion';
-import { open } from '@tauri-apps/plugin-opener';
+import { openUrl } from '@tauri-apps/plugin-opener';
 
 interface ModeSelectorProps {
   onSelectMode: (mode: "server" | "client") => void;
@@ -11,7 +11,7 @@ export function ModeSelector({ onSelectMode }: ModeSelectorProps) {
 
   const handleSupportClick = async () => {
     try {
-      await open("http://subs.twitch.tv/flowingspdg");
+      await openUrl("http://subs.twitch.tv/flowingspdg");
     } catch (error) {
       console.error("Failed to open URL:", error);
     }
@@ -19,15 +19,19 @@ export function ModeSelector({ onSelectMode }: ModeSelectorProps) {
 
   return (
     <div
+      className="scrollable"
       style={{
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
-        height: "100vh",
+        justifyContent: "flex-start",
+        minHeight: "100vh",
+        height: "100%",
         background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
         padding: "2rem",
+        paddingTop: "3rem",
         position: "relative",
+        overflowY: "auto",
       }}
     >
       <div style={{

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { open } from "@tauri-apps/plugin-opener";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 interface DonationDialogProps {
   isOpen: boolean;
@@ -24,7 +24,7 @@ export function DonationDialog({ isOpen, onClose }: DonationDialogProps) {
 
   const handleSupportClick = async () => {
     try {
-      await open("http://subs.twitch.tv/flowingspdg");
+      await openUrl("http://subs.twitch.tv/flowingspdg");
       onClose();
     } catch (error) {
       console.error("Failed to open URL:", error);
@@ -41,6 +41,7 @@ export function DonationDialog({ isOpen, onClose }: DonationDialogProps) {
 
   return (
     <div
+      className="scrollable"
       onClick={handleOverlayClick}
       style={{
         position: "fixed",
@@ -55,17 +56,21 @@ export function DonationDialog({ isOpen, onClose }: DonationDialogProps) {
         zIndex: 10000,
         padding: "1rem",
         animation: "fadeIn 0.2s ease-out",
+        overflowY: "auto",
       }}
     >
       <div
+        className="scrollable"
         style={{
           backgroundColor: "var(--card-bg)",
           borderRadius: "12px",
           boxShadow: "0 10px 40px rgba(0, 0, 0, 0.3)",
           maxWidth: "500px",
           width: "100%",
+          maxHeight: "90vh",
           padding: "2rem",
           animation: "scaleIn 0.2s ease-out",
+          overflowY: "auto",
         }}
         onClick={(e) => e.stopPropagation()}
       >
