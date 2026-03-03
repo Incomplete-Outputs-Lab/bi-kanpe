@@ -52,6 +52,7 @@ export function useServerState() {
         feedbackMessages: [],
         sentMessages: [],
         monitors: [],
+        timers: null,
       });
     });
 

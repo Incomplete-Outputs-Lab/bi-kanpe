@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useServerState } from "../hooks/useServerState";
+import { useTimerRemainingMs } from "../hooks/useTimerRemainingMs";
 import { useTemplates } from "../hooks/useTemplates";
 import { useToast } from "../hooks/useToast";
 import { TemplateManager } from "./TemplateManager";
@@ -14,6 +15,350 @@ import type {
   TimerEntry,
   TimerState,
 } from "../types/messages";
+
+/** Compact running-timer item for the summary bar; uses smooth countdown. */
+function TimerSummaryItem({
+  entry,
+  formatDuration,
+  formatTimerStateLabel,
+  onOpenPanel,
+}: {
+  entry: TimerEntry;
+  formatDuration: (ms: number) => string;
+  formatTimerStateLabel: (state: TimerState) => string;
+  onOpenPanel: () => void;
+}) {
+  const { definition, runtime } = entry;
+  const displayMs = useTimerRemainingMs(
+    runtime.remaining_ms,
+    runtime.last_updated_timestamp_ms,
+    runtime.state
+  );
+  return (
+    <button
+      type="button"
+      onClick={onOpenPanel}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "0.5rem",
+        padding: "0.35rem 0.75rem",
+        borderRadius: "6px",
+        border: "1px solid var(--card-border)",
+        backgroundColor: "var(--secondary-bg)",
+        color: "var(--text-color)",
+        cursor: "pointer",
+        fontSize: "0.9rem",
+      }}
+    >
+      <span style={{ fontWeight: "600" }}>{definition.name}</span>
+      <span style={{ fontVariantNumeric: "tabular-nums" }}>{formatDuration(displayMs)}</span>
+      <span
+        style={{
+          fontSize: "0.75rem",
+          padding: "0.1rem 0.4rem",
+          borderRadius: "999px",
+          backgroundColor: "#0ea5e9",
+          color: "white",
+        }}
+      >
+        {formatTimerStateLabel(runtime.state)}
+      </span>
+    </button>
+  );
+}
+
+/** Single timer row with smooth countdown, progress bar, main action + menu (stop/delete/edit). */
+function TimerListRow({
+  entry,
+  formatDuration,
+  formatTimerStateLabel,
+  onAction,
+  onDelete,
+  isEditing,
+  editingName,
+  onEditingNameChange,
+  onSaveEdit,
+  onCancelEdit,
+  onStartEdit,
+}: {
+  entry: TimerEntry;
+  formatDuration: (ms: number) => string;
+  formatTimerStateLabel: (state: TimerState) => string;
+  onAction: (timerId: string, action: "start" | "pause" | "resume" | "stop") => void;
+  onDelete: (timerId: string) => void;
+  isEditing?: boolean;
+  editingName?: string;
+  onEditingNameChange?: (name: string) => void;
+  onSaveEdit?: () => void;
+  onCancelEdit?: () => void;
+  onStartEdit?: (id: string, name: string) => void;
+}) {
+  const { definition, runtime } = entry;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const displayMs = useTimerRemainingMs(
+    runtime.remaining_ms,
+    runtime.last_updated_timestamp_ms,
+    runtime.state
+  );
+  const isRunning = runtime.state === "running";
+  const isPaused = runtime.state === "paused";
+  const isCompleted = runtime.state === "completed";
+  const isCancelled = runtime.state === "cancelled";
+  const isPending = runtime.state === "pending";
+  const targetsLabel = definition.target_monitor_ids.includes("ALL")
+    ? "全て"
+    : definition.target_monitor_ids.join(", ");
+
+  const totalMs =
+    definition.target_end_timestamp_ms != null && runtime.started_at_timestamp_ms != null
+      ? Math.max(1, definition.target_end_timestamp_ms - runtime.started_at_timestamp_ms)
+      : definition.duration_ms || 1;
+  const progressPercent =
+    isRunning || isPaused ? Math.max(0, 100 - (displayMs / totalMs) * 100) : isCompleted ? 100 : 0;
+
+  let mainAction: { label: string; action: "start" | "pause" | "resume" | "stop"; enabled: boolean } =
+    { label: "▶ スタート", action: "start", enabled: isPending };
+  if (isRunning) mainAction = { label: "⏸ 一時停止", action: "pause", enabled: true };
+  else if (isPaused) mainAction = { label: "▶ 再開", action: "resume", enabled: true };
+  else if (!isPending && !isCompleted && !isCancelled)
+    mainAction = { label: "⏹ 停止", action: "stop", enabled: true };
+
+  return (
+    <div
+      style={{
+        padding: "0.75rem",
+        borderRadius: "6px",
+        backgroundColor: "var(--bg-color)",
+        border: "1px solid var(--card-border)",
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.3rem",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        {isEditing ? (
+          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flex: 1 }}>
+            <input
+              type="text"
+              value={editingName ?? definition.name}
+              onChange={(e) => onEditingNameChange?.(e.target.value)}
+              style={{
+                flex: 1,
+                padding: "0.35rem 0.5rem",
+                borderRadius: "4px",
+                border: "1px solid var(--card-border)",
+                backgroundColor: "var(--input-bg)",
+                color: "var(--text-color)",
+                fontSize: "0.95rem",
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => onSaveEdit?.()}
+              style={{
+                padding: "0.35rem 0.6rem",
+                fontSize: "0.85rem",
+                borderRadius: "4px",
+                border: "none",
+                backgroundColor: "#22c55e",
+                color: "white",
+                cursor: "pointer",
+              }}
+            >
+              保存
+            </button>
+            <button
+              type="button"
+              onClick={() => onCancelEdit?.()}
+              style={{
+                padding: "0.35rem 0.6rem",
+                fontSize: "0.85rem",
+                borderRadius: "4px",
+                border: "1px solid var(--card-border)",
+                backgroundColor: "var(--secondary-bg)",
+                color: "var(--text-color)",
+                cursor: "pointer",
+              }}
+            >
+              キャンセル
+            </button>
+          </div>
+        ) : (
+          <div style={{ fontWeight: "600", color: "var(--text-color)" }}>{definition.name}</div>
+        )}
+        {!isEditing && (
+          <div
+            style={{
+              fontSize: "0.8rem",
+              padding: "0.15rem 0.5rem",
+              borderRadius: "999px",
+              backgroundColor: "var(--secondary-bg)",
+              color: "var(--text-color)",
+            }}
+          >
+            {formatTimerStateLabel(runtime.state)}
+          </div>
+        )}
+      </div>
+      {(isRunning || isPaused || isCompleted) && (
+        <div
+          style={{
+            height: "4px",
+            borderRadius: "2px",
+            backgroundColor: "var(--card-border)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: `${progressPercent}%`,
+              backgroundColor: isCompleted ? "#22c55e" : "#0ea5e9",
+              transition: "width 0.1s linear",
+            }}
+          />
+        </div>
+      )}
+      {!isEditing && (
+        <>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: "0.85rem",
+          color: "var(--muted-text)",
+        }}
+      >
+        <span style={{ fontVariantNumeric: "tabular-nums" }}>残り: {formatDuration(displayMs)}</span>
+        <span>対象: {targetsLabel}</span>
+      </div>
+      <div style={{ display: "flex", gap: "0.25rem", marginTop: "0.25rem", alignItems: "center" }}>
+        <button
+          onClick={() => mainAction.enabled && onAction(definition.id, mainAction.action)}
+          disabled={!mainAction.enabled}
+          style={{
+            padding: "0.35rem 0.85rem",
+            fontSize: "0.85rem",
+            borderRadius: "4px",
+            border: "none",
+            backgroundColor: mainAction.enabled ? "#0ea5e9" : "#d1d5db",
+            color: "white",
+            cursor: mainAction.enabled ? "pointer" : "not-allowed",
+            fontWeight: "600",
+          }}
+        >
+          {mainAction.label}
+        </button>
+        <div style={{ position: "relative", marginLeft: "auto" }}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((o) => !o)}
+            style={{
+              padding: "0.35rem 0.5rem",
+              fontSize: "0.85rem",
+              borderRadius: "4px",
+              border: "1px solid var(--card-border)",
+              backgroundColor: "var(--secondary-bg)",
+              color: "var(--text-color)",
+              cursor: "pointer",
+            }}
+          >
+            ⋯
+          </button>
+          {menuOpen && (
+            <>
+              <div
+                role="presentation"
+                style={{ position: "fixed", inset: 0, zIndex: 10 }}
+                onClick={() => setMenuOpen(false)}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: "100%",
+                  marginTop: "0.25rem",
+                  zIndex: 11,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.25rem",
+                  padding: "0.25rem",
+                  borderRadius: "4px",
+                  border: "1px solid var(--card-border)",
+                  backgroundColor: "var(--card-bg)",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                }}
+              >
+                {!isPending && !isCompleted && !isCancelled && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onAction(definition.id, "stop");
+                      setMenuOpen(false);
+                    }}
+                    style={{
+                      padding: "0.4rem 0.75rem",
+                      fontSize: "0.85rem",
+                      textAlign: "left",
+                      border: "none",
+                      borderRadius: "4px",
+                      backgroundColor: "transparent",
+                      color: "var(--text-color)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    ⏹ 停止
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onStartEdit?.(definition.id, definition.name);
+                    setMenuOpen(false);
+                  }}
+                  style={{
+                    padding: "0.4rem 0.75rem",
+                    fontSize: "0.85rem",
+                    textAlign: "left",
+                    border: "none",
+                    borderRadius: "4px",
+                    backgroundColor: "transparent",
+                    color: "var(--text-color)",
+                    cursor: "pointer",
+                  }}
+                >
+                  ✏ 名前を変更
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDelete(definition.id);
+                    setMenuOpen(false);
+                  }}
+                  style={{
+                    padding: "0.4rem 0.75rem",
+                    fontSize: "0.85rem",
+                    textAlign: "left",
+                    border: "none",
+                    borderRadius: "4px",
+                    backgroundColor: "transparent",
+                    color: "#ef4444",
+                    cursor: "pointer",
+                  }}
+                >
+                  🗑 削除
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 // Hoist static priority options to avoid recreation on every render
 const PRIORITY_OPTIONS = [
@@ -67,6 +412,8 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
   const [newTimerTargetEndDateTime, setNewTimerTargetEndDateTime] = useState<string>("");
   const [newTimerTargetMonitorIds, setNewTimerTargetMonitorIds] = useState<string[]>(["ALL"]);
   const [isCreatingTimer, setIsCreatingTimer] = useState<boolean>(false);
+  const [editingTimerId, setEditingTimerId] = useState<string | null>(null);
+  const [editingTimerName, setEditingTimerName] = useState<string>("");
 
   const handleBackToMenu = async () => {
     if (serverState.isRunning) {
@@ -146,6 +493,10 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
   }, [serverState.sentMessages, serverState.feedbackMessages]);
 
   const timers: TimerEntry[] = serverState.timers?.timers ?? [];
+  const runningTimers = useMemo(
+    () => timers.filter((e) => e.runtime.state === "running"),
+    [timers]
+  );
 
   const formatDuration = (remainingMs: number) => {
     const totalSeconds = Math.max(0, Math.floor(remainingMs / 1000));
@@ -274,6 +625,37 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
           : { kind: "stop", timer_id: timerId, cancelled: false };
 
       await invoke("send_timer_command", { command });
+    } catch (err) {
+      setError(String(err));
+    }
+  };
+
+  const handleTimerDelete = async (timerId: string) => {
+    try {
+      setError(null);
+      await invoke("send_timer_command", {
+        command: { kind: "delete", timer_id: timerId },
+      });
+      if (editingTimerId === timerId) {
+        setEditingTimerId(null);
+        setEditingTimerName("");
+      }
+    } catch (err) {
+      setError(String(err));
+    }
+  };
+
+  const handleTimerUpdate = async (
+    timerId: string,
+    definition: TimerEntry["definition"]
+  ) => {
+    try {
+      setError(null);
+      await invoke("send_timer_command", {
+        command: { kind: "update", definition: { ...definition, id: timerId } },
+      });
+      setEditingTimerId(null);
+      setEditingTimerName("");
     } catch (err) {
       setError(String(err));
     }
@@ -566,6 +948,35 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
             </div>
           )}
         </div>
+
+        {/* Timer Summary Bar: always visible when there are running timers */}
+        {serverState.isRunning && runningTimers.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: "0.5rem",
+              padding: "0.5rem 0.75rem",
+              borderRadius: "8px",
+              border: "1px solid var(--card-border)",
+              backgroundColor: "var(--card-bg)",
+            }}
+          >
+            <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--text-color)", marginRight: "0.25rem" }}>
+              ⏱ 進行中:
+            </span>
+            {runningTimers.map((entry) => (
+              <TimerSummaryItem
+                key={entry.definition.id}
+                entry={entry}
+                formatDuration={formatDuration}
+                formatTimerStateLabel={formatTimerStateLabel}
+                onOpenPanel={() => setShowTimerManagement(true)}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Web接続情報 */}
         {serverState.isRunning && serverAddresses.length > 0 && (
@@ -980,6 +1391,48 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                   </p>
                 </div>
               ) : (
+              <>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                <label
+                  style={{
+                    fontSize: "0.85rem",
+                    fontWeight: "600",
+                    color: "var(--text-color)",
+                  }}
+                >
+                  クイック設定
+                </label>
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                  {[
+                    [1, 0],
+                    [3, 0],
+                    [5, 0],
+                    [10, 0],
+                    [15, 0],
+                    [30, 0],
+                  ].map(([min, sec]) => (
+                    <button
+                      key={`${min}-${sec}`}
+                      type="button"
+                      onClick={() => {
+                        setNewTimerDurationMinutes(min);
+                        setNewTimerDurationSeconds(sec);
+                      }}
+                      style={{
+                        padding: "0.4rem 0.75rem",
+                        fontSize: "0.85rem",
+                        borderRadius: "4px",
+                        border: "1px solid var(--card-border)",
+                        backgroundColor: "var(--bg-color)",
+                        color: "var(--text-color)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {min}分
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                   <label
@@ -1055,6 +1508,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                   />
                 </div>
               </div>
+              </>
               )}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -1187,145 +1641,34 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                     まだタイマーが登録されていません
                   </div>
                 ) : (
-                  timers.map((entry) => {
-                    const { definition, runtime } = entry;
-                    const isRunning = runtime.state === "running";
-                    const isPaused = runtime.state === "paused";
-                    const isCompleted = runtime.state === "completed";
-                    const isCancelled = runtime.state === "cancelled";
-                    const isPending = runtime.state === "pending";
-                    const targetsLabel = definition.target_monitor_ids.includes("ALL")
-                      ? "全て"
-                      : definition.target_monitor_ids.join(", ");
-
-                    return (
-                      <div
-                        key={definition.id}
-                        style={{
-                          padding: "0.75rem",
-                          borderRadius: "6px",
-                          backgroundColor: "var(--bg-color)",
-                          border: "1px solid var(--card-border)",
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "0.3rem",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontWeight: "600",
-                              color: "var(--text-color)",
-                            }}
-                          >
-                            {definition.name}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: "0.8rem",
-                              padding: "0.15rem 0.5rem",
-                              borderRadius: "999px",
-                              backgroundColor: "var(--secondary-bg)",
-                              color: "var(--text-color)",
-                            }}
-                          >
-                            {formatTimerStateLabel(runtime.state)}
-                          </div>
-                        </div>
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            fontSize: "0.85rem",
-                            color: "var(--muted-text)",
-                          }}
-                        >
-                          <span>残り: {formatDuration(runtime.remaining_ms)}</span>
-                          <span>対象: {targetsLabel}</span>
-                        </div>
-                        <div
-                          style={{
-                            display: "flex",
-                            gap: "0.25rem",
-                            marginTop: "0.25rem",
-                          }}
-                        >
-                          <button
-                            onClick={() => handleTimerAction(definition.id, "start")}
-                            disabled={isRunning}
-                            style={{
-                              padding: "0.3rem 0.75rem",
-                              fontSize: "0.8rem",
-                              borderRadius: "4px",
-                              border: "none",
-                              backgroundColor: isRunning ? "#d1d5db" : "#22c55e",
-                              color: "white",
-                              cursor: isRunning ? "not-allowed" : "pointer",
-                            }}
-                          >
-                            ▶ スタート
-                          </button>
-                          <button
-                            onClick={() => handleTimerAction(definition.id, "pause")}
-                            disabled={!isRunning}
-                            style={{
-                              padding: "0.3rem 0.75rem",
-                              fontSize: "0.8rem",
-                              borderRadius: "4px",
-                              border: "none",
-                              backgroundColor: !isRunning ? "#d1d5db" : "#f59e0b",
-                              color: "white",
-                              cursor: !isRunning ? "not-allowed" : "pointer",
-                            }}
-                          >
-                            ⏸ 一時停止
-                          </button>
-                          <button
-                            onClick={() => handleTimerAction(definition.id, "resume")}
-                            disabled={!isPaused}
-                            style={{
-                              padding: "0.3rem 0.75rem",
-                              fontSize: "0.8rem",
-                              borderRadius: "4px",
-                              border: "none",
-                              backgroundColor: !isPaused ? "#d1d5db" : "#3b82f6",
-                              color: "white",
-                              cursor: !isPaused ? "not-allowed" : "pointer",
-                            }}
-                          >
-                            ▶ 再開
-                          </button>
-                          <button
-                            onClick={() => handleTimerAction(definition.id, "stop")}
-                            disabled={isCompleted || isCancelled || isPending}
-                            style={{
-                              padding: "0.3rem 0.75rem",
-                              fontSize: "0.8rem",
-                              borderRadius: "4px",
-                              border: "none",
-                              backgroundColor:
-                                isCompleted || isCancelled || isPending
-                                  ? "#d1d5db"
-                                  : "#ef4444",
-                              color: "white",
-                              cursor:
-                                isCompleted || isCancelled || isPending
-                                  ? "not-allowed"
-                                  : "pointer",
-                            }}
-                          >
-                            ⏹ 停止
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })
+                  timers.map((entry) => (
+                    <TimerListRow
+                      key={entry.definition.id}
+                      entry={entry}
+                      formatDuration={formatDuration}
+                      formatTimerStateLabel={formatTimerStateLabel}
+                      onAction={handleTimerAction}
+                      onDelete={handleTimerDelete}
+                      isEditing={editingTimerId === entry.definition.id}
+                      editingName={editingTimerName}
+                      onEditingNameChange={setEditingTimerName}
+                      onSaveEdit={() =>
+                        editingTimerId &&
+                        handleTimerUpdate(editingTimerId, {
+                          ...entry.definition,
+                          name: editingTimerName.trim() || entry.definition.name,
+                        })
+                      }
+                      onCancelEdit={() => {
+                        setEditingTimerId(null);
+                        setEditingTimerName("");
+                      }}
+                      onStartEdit={(id, name) => {
+                        setEditingTimerId(id);
+                        setEditingTimerName(name);
+                      }}
+                    />
+                  ))
                 )}
               </div>
             </div>
