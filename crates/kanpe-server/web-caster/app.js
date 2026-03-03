@@ -8,6 +8,7 @@ const state = {
     selectedMonitorIds: [],
     availableMonitors: [],
     currentMessage: null,
+    timers: null, // { timestamp_ms, timers: [{ definition, runtime }] }
     fontSize: 4, // rem
     theme: 'light',
 };
@@ -50,6 +51,8 @@ const elements = {
     fontDecrease: document.getElementById('font-decrease'),
     fontSizeDisplay: document.getElementById('font-size-display'),
     themeToggle: document.getElementById('theme-toggle'),
+    timerBar: document.getElementById('timer-bar'),
+    timerBarList: document.getElementById('timer-bar-list'),
 };
 
 // Utility: Generate UUID v4
@@ -225,6 +228,9 @@ function handleWebSocketMessage(event) {
             case 'monitor_updated':
                 // Handle monitor updates if needed
                 break;
+            case 'timer_state_update':
+                handleTimerStateUpdate(message);
+                break;
             case 'ping':
                 // Respond with pong
                 sendPong();
@@ -324,6 +330,71 @@ function handleFlashCommand(message) {
     }
 }
 
+// Handle TimerStateUpdate
+function handleTimerStateUpdate(message) {
+    state.timers = message.payload || null;
+    renderTimerBar();
+}
+
+// Filter timers by selected monitor IDs (ALL or intersection)
+function getVisibleTimers() {
+    if (!state.timers || !state.timers.timers || state.timers.timers.length === 0) return [];
+    const selected = state.selectedMonitorIds;
+    return state.timers.timers.filter(function(entry) {
+        const targets = entry.definition.target_monitor_ids || [];
+        if (targets.includes('ALL')) return true;
+        if (selected.length === 0) return true;
+        return targets.some(function(id) { return selected.indexOf(id) !== -1; });
+    });
+}
+
+// Format remaining ms as MM:SS or HH:MM:SS
+function formatRemainingMs(ms) {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    function pad(n) { return (n < 10 ? '0' : '') + n; }
+    if (hours > 0) return pad(hours) + ':' + pad(minutes) + ':' + pad(seconds);
+    return pad(minutes) + ':' + pad(seconds);
+}
+
+// State label for timer
+function getTimerStateLabel(s) {
+    switch (s) {
+        case 'running': return '▶ 進行中';
+        case 'paused': return '⏸ 一時停止';
+        case 'completed': return '✓ 完了';
+        case 'cancelled': return '✕ 中止';
+        case 'pending':
+        default: return '待機中';
+    }
+}
+
+// Render timer bar (only when connected and visible timers exist)
+function renderTimerBar() {
+    if (!elements.timerBar || !elements.timerBarList || !elements.displayScreen) return;
+    const visible = getVisibleTimers();
+    if (!state.connected || visible.length === 0) {
+        elements.timerBar.style.display = 'none';
+        elements.displayScreen.classList.remove('has-timer-bar');
+        return;
+    }
+    elements.timerBar.style.display = 'block';
+    elements.displayScreen.classList.add('has-timer-bar');
+    elements.timerBarList.innerHTML = '';
+    visible.forEach(function(entry) {
+        const def = entry.definition;
+        const runtime = entry.runtime;
+        const badge = document.createElement('div');
+        badge.className = 'timer-badge timer-state-' + (runtime.state || 'pending');
+        badge.innerHTML = '<span class="timer-badge-name">' + (def.name || '') + '</span>' +
+            '<span class="timer-badge-time">' + formatRemainingMs(runtime.remaining_ms || 0) + '</span>' +
+            '<span class="timer-badge-state">' + getTimerStateLabel(runtime.state) + '</span>';
+        elements.timerBarList.appendChild(badge);
+    });
+}
+
 // Handle ClearCommand
 function handleClearCommand(message) {
     const targetIds = message.payload.target_monitor_ids;
@@ -381,6 +452,8 @@ function handleDisconnect() {
     
     state.connected = false;
     state.currentMessage = null;
+    state.timers = null;
+    renderTimerBar();
     
     elements.displayScreen.style.display = 'none';
     elements.connectionScreen.style.display = 'flex';

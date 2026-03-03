@@ -141,6 +141,11 @@ impl KanpeClient {
                                                     target_monitor_ids: payload.target_monitor_ids,
                                                 });
                                             }
+                                            Message::TimerStateUpdate { payload, .. } => {
+                                                let _ = event_tx.send(ClientEvent::TimerStateUpdated {
+                                                    snapshot: payload,
+                                                });
+                                            }
                                             Message::Ping { .. } => {
                                                 // Respond with pong
                                                 let pong = Message::pong();

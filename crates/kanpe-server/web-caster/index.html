@@ -47,7 +47,7 @@
         <!-- Feedback Toggle Button (top-right) -->
         <button id="feedback-toggle" class="feedback-toggle-btn">💬 フィードバック</button>
         
-        <!-- Main Message Display -->
+        <!-- Main Message Display（中央） -->
         <div id="message-display" class="message-display">
             <div id="waiting-state" class="waiting-state">
                 <div class="emoji">💤</div>
@@ -58,6 +58,12 @@
                 <div id="message-text" class="message-text"></div>
                 <div id="priority-badge" class="priority-badge"></div>
             </div>
+        </div>
+        
+        <!-- Timer Bar: カンペの下・画面下中央にでっかく表示 -->
+        <div id="timer-bar" class="timer-bar" style="display: none;">
+            <span class="timer-bar-label">⏱ タイマー</span>
+            <div id="timer-bar-list" class="timer-bar-list"></div>
         </div>
         
         <!-- Feedback Panel (sliding from bottom) -->

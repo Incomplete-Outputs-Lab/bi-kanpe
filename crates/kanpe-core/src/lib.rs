@@ -8,4 +8,14 @@ pub mod types;
 
 // Re-export commonly used types
 pub use message::Message;
-pub use types::{Priority, FeedbackType};
+pub use types::{
+    Priority,
+    FeedbackType,
+    TimerState,
+    TimerDefinition,
+    TimerRuntimeState,
+    TimerStateSnapshot,
+    TimerEntry,
+    TimerCommandKind,
+    TimerCommandPayload,
+};

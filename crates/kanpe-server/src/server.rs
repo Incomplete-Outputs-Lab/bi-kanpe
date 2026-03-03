@@ -4,6 +4,7 @@ use crate::broadcast::broadcast_message;
 use crate::client_manager::{ClientInfo, ClientManager};
 use crate::events::ServerEvent;
 use crate::monitor_manager::MonitorManager;
+use crate::timer_manager::TimerManager;
 use axum::{
     extract::{ws::WebSocketUpgrade, State},
     response::Response,
@@ -35,6 +36,7 @@ struct AppState {
 pub struct KanpeServer {
     client_manager: Arc<ClientManager>,
     monitor_manager: Arc<MonitorManager>,
+    timer_manager: Arc<TimerManager>,
     event_tx: mpsc::UnboundedSender<ServerEvent>,
     shutdown_tx: Option<mpsc::Sender<()>>,
 }
@@ -45,6 +47,7 @@ impl KanpeServer {
         Self {
             client_manager: Arc::new(ClientManager::new()),
             monitor_manager: Arc::new(MonitorManager::new()),
+            timer_manager: Arc::new(TimerManager::new()),
             event_tx,
             shutdown_tx: None,
         }
@@ -83,6 +86,22 @@ impl KanpeServer {
                 })
                 .await
                 .expect("Server error");
+        });
+
+        // Start timer update loop
+        let timer_manager = self.timer_manager.clone();
+        let client_manager = self.client_manager.clone();
+        tokio::spawn(async move {
+            let mut ticker = interval(Duration::from_secs(1));
+            loop {
+                ticker.tick().await;
+                if let Some(snapshot) = timer_manager.tick_and_snapshot().await {
+                    let msg = Message::timer_state_update(snapshot);
+                    if let Err(e) = broadcast_message(&client_manager, &msg).await {
+                        eprintln!("Failed to broadcast timer update: {}", e);
+                    }
+                }
+            }
         });
 
         Ok(())
@@ -167,6 +186,30 @@ impl KanpeServer {
     /// Get all virtual monitors
     pub async fn get_monitors(&self) -> Vec<kanpe_core::types::VirtualMonitor> {
         self.monitor_manager.get_all_monitors().await
+    }
+
+    /// Apply a timer command and immediately broadcast updated snapshot
+    pub async fn apply_timer_command(
+        &self,
+        command: kanpe_core::TimerCommandKind,
+    ) -> Result<(), String> {
+        let now_ms = kanpe_core::types::timestamp();
+        self.timer_manager
+            .apply_command(command, now_ms)
+            .await?;
+
+        let snapshot = self.timer_manager.snapshot().await;
+        let msg = Message::timer_state_update(snapshot);
+        if let Err(e) = broadcast_message(&self.client_manager, &msg).await {
+            eprintln!("Failed to broadcast timer update: {}", e);
+        }
+
+        Ok(())
+    }
+
+    /// Get current timer snapshot
+    pub async fn get_timer_snapshot(&self) -> kanpe_core::TimerStateSnapshot {
+        self.timer_manager.snapshot().await
     }
 }
 

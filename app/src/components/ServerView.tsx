@@ -1,13 +1,364 @@
 import { useState, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useServerState } from "../hooks/useServerState";
+import { useTimerRemainingMs } from "../hooks/useTimerRemainingMs";
 import { useTemplates } from "../hooks/useTemplates";
 import { useToast } from "../hooks/useToast";
 import { TemplateManager } from "./TemplateManager";
 import { ThemeToggle } from "./ThemeToggle";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { QRCodeSVG } from "qrcode.react";
-import type { Message, Priority, ServerTemplate } from "../types/messages";
+import type {
+  Message,
+  Priority,
+  ServerTemplate,
+  TimerEntry,
+  TimerState,
+} from "../types/messages";
+
+/** Compact running-timer item for the summary bar; uses smooth countdown. */
+function TimerSummaryItem({
+  entry,
+  formatDuration,
+  formatTimerStateLabel,
+  onOpenPanel,
+}: {
+  entry: TimerEntry;
+  formatDuration: (ms: number) => string;
+  formatTimerStateLabel: (state: TimerState) => string;
+  onOpenPanel: () => void;
+}) {
+  const { definition, runtime } = entry;
+  const displayMs = useTimerRemainingMs(
+    runtime.remaining_ms,
+    runtime.last_updated_timestamp_ms,
+    runtime.state
+  );
+  return (
+    <button
+      type="button"
+      onClick={onOpenPanel}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "0.5rem",
+        padding: "0.35rem 0.75rem",
+        borderRadius: "6px",
+        border: "1px solid var(--card-border)",
+        backgroundColor: "var(--secondary-bg)",
+        color: "var(--text-color)",
+        cursor: "pointer",
+        fontSize: "0.9rem",
+      }}
+    >
+      <span style={{ fontWeight: "600" }}>{definition.name}</span>
+      <span style={{ fontVariantNumeric: "tabular-nums" }}>{formatDuration(displayMs)}</span>
+      <span
+        style={{
+          fontSize: "0.75rem",
+          padding: "0.1rem 0.4rem",
+          borderRadius: "999px",
+          backgroundColor: "#0ea5e9",
+          color: "white",
+        }}
+      >
+        {formatTimerStateLabel(runtime.state)}
+      </span>
+    </button>
+  );
+}
+
+/** Single timer row with smooth countdown, progress bar, main action + menu (stop/delete/edit). */
+function TimerListRow({
+  entry,
+  formatDuration,
+  formatTimerStateLabel,
+  onAction,
+  onDelete,
+  isEditing,
+  editingName,
+  onEditingNameChange,
+  onSaveEdit,
+  onCancelEdit,
+  onStartEdit,
+}: {
+  entry: TimerEntry;
+  formatDuration: (ms: number) => string;
+  formatTimerStateLabel: (state: TimerState) => string;
+  onAction: (timerId: string, action: "start" | "pause" | "resume" | "stop") => void;
+  onDelete: (timerId: string) => void;
+  isEditing?: boolean;
+  editingName?: string;
+  onEditingNameChange?: (name: string) => void;
+  onSaveEdit?: () => void;
+  onCancelEdit?: () => void;
+  onStartEdit?: (id: string, name: string) => void;
+}) {
+  const { definition, runtime } = entry;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const displayMs = useTimerRemainingMs(
+    runtime.remaining_ms,
+    runtime.last_updated_timestamp_ms,
+    runtime.state
+  );
+  const isRunning = runtime.state === "running";
+  const isPaused = runtime.state === "paused";
+  const isCompleted = runtime.state === "completed";
+  const isCancelled = runtime.state === "cancelled";
+  const isPending = runtime.state === "pending";
+  const targetsLabel = definition.target_monitor_ids.includes("ALL")
+    ? "全て"
+    : definition.target_monitor_ids.join(", ");
+
+  const totalMs =
+    definition.target_end_timestamp_ms != null && runtime.started_at_timestamp_ms != null
+      ? Math.max(1, definition.target_end_timestamp_ms - runtime.started_at_timestamp_ms)
+      : definition.duration_ms || 1;
+  const progressPercent =
+    isRunning || isPaused ? Math.max(0, 100 - (displayMs / totalMs) * 100) : isCompleted ? 100 : 0;
+
+  let mainAction: { label: string; action: "start" | "pause" | "resume" | "stop"; enabled: boolean } =
+    { label: "▶ スタート", action: "start", enabled: isPending };
+  if (isRunning) mainAction = { label: "⏸ 一時停止", action: "pause", enabled: true };
+  else if (isPaused) mainAction = { label: "▶ 再開", action: "resume", enabled: true };
+  else if (!isPending && !isCompleted && !isCancelled)
+    mainAction = { label: "⏹ 停止", action: "stop", enabled: true };
+
+  return (
+    <div
+      style={{
+        padding: "0.75rem",
+        borderRadius: "6px",
+        backgroundColor: "var(--bg-color)",
+        border: "1px solid var(--card-border)",
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.3rem",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        {isEditing ? (
+          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flex: 1 }}>
+            <input
+              type="text"
+              value={editingName ?? definition.name}
+              onChange={(e) => onEditingNameChange?.(e.target.value)}
+              style={{
+                flex: 1,
+                padding: "0.35rem 0.5rem",
+                borderRadius: "4px",
+                border: "1px solid var(--card-border)",
+                backgroundColor: "var(--input-bg)",
+                color: "var(--text-color)",
+                fontSize: "0.95rem",
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => onSaveEdit?.()}
+              style={{
+                padding: "0.35rem 0.6rem",
+                fontSize: "0.85rem",
+                borderRadius: "4px",
+                border: "none",
+                backgroundColor: "#22c55e",
+                color: "white",
+                cursor: "pointer",
+              }}
+            >
+              保存
+            </button>
+            <button
+              type="button"
+              onClick={() => onCancelEdit?.()}
+              style={{
+                padding: "0.35rem 0.6rem",
+                fontSize: "0.85rem",
+                borderRadius: "4px",
+                border: "1px solid var(--card-border)",
+                backgroundColor: "var(--secondary-bg)",
+                color: "var(--text-color)",
+                cursor: "pointer",
+              }}
+            >
+              キャンセル
+            </button>
+          </div>
+        ) : (
+          <div style={{ fontWeight: "600", color: "var(--text-color)" }}>{definition.name}</div>
+        )}
+        {!isEditing && (
+          <div
+            style={{
+              fontSize: "0.8rem",
+              padding: "0.15rem 0.5rem",
+              borderRadius: "999px",
+              backgroundColor: "var(--secondary-bg)",
+              color: "var(--text-color)",
+            }}
+          >
+            {formatTimerStateLabel(runtime.state)}
+          </div>
+        )}
+      </div>
+      {(isRunning || isPaused || isCompleted) && (
+        <div
+          style={{
+            height: "4px",
+            borderRadius: "2px",
+            backgroundColor: "var(--card-border)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: `${progressPercent}%`,
+              backgroundColor: isCompleted ? "#22c55e" : "#0ea5e9",
+              transition: "width 0.1s linear",
+            }}
+          />
+        </div>
+      )}
+      {!isEditing && (
+        <>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: "0.85rem",
+          color: "var(--muted-text)",
+        }}
+      >
+        <span style={{ fontVariantNumeric: "tabular-nums" }}>残り: {formatDuration(displayMs)}</span>
+        <span>対象: {targetsLabel}</span>
+      </div>
+      <div style={{ display: "flex", gap: "0.25rem", marginTop: "0.25rem", alignItems: "center" }}>
+        <button
+          onClick={() => mainAction.enabled && onAction(definition.id, mainAction.action)}
+          disabled={!mainAction.enabled}
+          style={{
+            padding: "0.35rem 0.85rem",
+            fontSize: "0.85rem",
+            borderRadius: "4px",
+            border: "none",
+            backgroundColor: mainAction.enabled ? "#0ea5e9" : "#d1d5db",
+            color: "white",
+            cursor: mainAction.enabled ? "pointer" : "not-allowed",
+            fontWeight: "600",
+          }}
+        >
+          {mainAction.label}
+        </button>
+        <div style={{ position: "relative", marginLeft: "auto" }}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((o) => !o)}
+            style={{
+              padding: "0.35rem 0.5rem",
+              fontSize: "0.85rem",
+              borderRadius: "4px",
+              border: "1px solid var(--card-border)",
+              backgroundColor: "var(--secondary-bg)",
+              color: "var(--text-color)",
+              cursor: "pointer",
+            }}
+          >
+            ⋯
+          </button>
+          {menuOpen && (
+            <>
+              <div
+                role="presentation"
+                style={{ position: "fixed", inset: 0, zIndex: 10 }}
+                onClick={() => setMenuOpen(false)}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: "100%",
+                  marginTop: "0.25rem",
+                  zIndex: 11,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.25rem",
+                  padding: "0.25rem",
+                  borderRadius: "4px",
+                  border: "1px solid var(--card-border)",
+                  backgroundColor: "var(--card-bg)",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                }}
+              >
+                {!isPending && !isCompleted && !isCancelled && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onAction(definition.id, "stop");
+                      setMenuOpen(false);
+                    }}
+                    style={{
+                      padding: "0.4rem 0.75rem",
+                      fontSize: "0.85rem",
+                      textAlign: "left",
+                      border: "none",
+                      borderRadius: "4px",
+                      backgroundColor: "transparent",
+                      color: "var(--text-color)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    ⏹ 停止
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onStartEdit?.(definition.id, definition.name);
+                    setMenuOpen(false);
+                  }}
+                  style={{
+                    padding: "0.4rem 0.75rem",
+                    fontSize: "0.85rem",
+                    textAlign: "left",
+                    border: "none",
+                    borderRadius: "4px",
+                    backgroundColor: "transparent",
+                    color: "var(--text-color)",
+                    cursor: "pointer",
+                  }}
+                >
+                  ✏ 名前を変更
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDelete(definition.id);
+                    setMenuOpen(false);
+                  }}
+                  style={{
+                    padding: "0.4rem 0.75rem",
+                    fontSize: "0.85rem",
+                    textAlign: "left",
+                    border: "none",
+                    borderRadius: "4px",
+                    backgroundColor: "transparent",
+                    color: "#ef4444",
+                    cursor: "pointer",
+                  }}
+                >
+                  🗑 削除
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 // Hoist static priority options to avoid recreation on every render
 const PRIORITY_OPTIONS = [
@@ -52,6 +403,17 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
     message: "",
     onConfirm: () => {},
   });
+  const [showTimerManagement, setShowTimerManagement] = useState<boolean>(false);
+  const [newTimerName, setNewTimerName] = useState<string>("");
+  const [newTimerDurationMinutes, setNewTimerDurationMinutes] = useState<number>(0);
+  const [newTimerDurationSeconds, setNewTimerDurationSeconds] = useState<number>(0);
+  const [newTimerScheduledTime, setNewTimerScheduledTime] = useState<string>("");
+  const [newTimerUseTargetEnd, setNewTimerUseTargetEnd] = useState<boolean>(false);
+  const [newTimerTargetEndDateTime, setNewTimerTargetEndDateTime] = useState<string>("");
+  const [newTimerTargetMonitorIds, setNewTimerTargetMonitorIds] = useState<string[]>(["ALL"]);
+  const [isCreatingTimer, setIsCreatingTimer] = useState<boolean>(false);
+  const [editingTimerId, setEditingTimerId] = useState<string | null>(null);
+  const [editingTimerName, setEditingTimerName] = useState<string>("");
 
   const handleBackToMenu = async () => {
     if (serverState.isRunning) {
@@ -129,6 +491,175 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
       })
       .filter(Boolean);
   }, [serverState.sentMessages, serverState.feedbackMessages]);
+
+  const timers: TimerEntry[] = serverState.timers?.timers ?? [];
+  const runningTimers = useMemo(
+    () => timers.filter((e) => e.runtime.state === "running"),
+    [timers]
+  );
+
+  const formatDuration = (remainingMs: number) => {
+    const totalSeconds = Math.max(0, Math.floor(remainingMs / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    if (hours > 0) {
+      return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    }
+    return `${pad(minutes)}:${pad(seconds)}`;
+  };
+
+  const formatTimerStateLabel = (state: TimerState) => {
+    switch (state) {
+      case "running":
+        return "▶ 進行中";
+      case "paused":
+        return "⏸ 一時停止";
+      case "completed":
+        return "✓ 完了";
+      case "cancelled":
+        return "✕ 中止";
+      case "pending":
+      default:
+        return "待機中";
+    }
+  };
+
+  const toggleTimerTargetMonitorId = (id: string) => {
+    if (id === "ALL") {
+      setNewTimerTargetMonitorIds(["ALL"]);
+    } else {
+      setNewTimerTargetMonitorIds((prev) => {
+        const base = prev.filter((v) => v !== "ALL");
+        return base.includes(id)
+          ? base.filter((v) => v !== id)
+          : [...base, id];
+      });
+    }
+  };
+
+  const handleCreateTimer = async () => {
+    if (!newTimerName.trim()) {
+      setError("タイマー名を入力してください");
+      return;
+    }
+    const durationMs =
+      Math.max(0, newTimerDurationMinutes) * 60_000 +
+      Math.max(0, newTimerDurationSeconds) * 1_000;
+    let targetEndTimestampMs: number | null = null;
+    if (newTimerUseTargetEnd && newTimerTargetEndDateTime) {
+      const t = new Date(newTimerTargetEndDateTime).getTime();
+      if (Number.isNaN(t)) {
+        setError("終了時刻を正しく入力してください");
+        return;
+      }
+      targetEndTimestampMs = t;
+    } else if (durationMs <= 0) {
+      setError("タイマーの長さを1秒以上にしてくださいか、または「指定時刻までカウントダウン」で終了時刻を指定してください");
+      return;
+    }
+
+    let scheduledStartTimestampMs: number | null = null;
+    if (newTimerScheduledTime) {
+      const [hh, mm] = newTimerScheduledTime.split(":").map((v) => parseInt(v, 10));
+      if (!Number.isNaN(hh) && !Number.isNaN(mm)) {
+        const now = new Date();
+        const scheduled = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          hh,
+          mm,
+          0,
+          0
+        );
+        scheduledStartTimestampMs = scheduled.getTime();
+      }
+    }
+
+    const targets =
+      newTimerTargetMonitorIds.length === 0 ? ["ALL"] : newTimerTargetMonitorIds;
+
+    try {
+      setError(null);
+      setIsCreatingTimer(true);
+      const id =
+        (globalThis.crypto && "randomUUID" in globalThis.crypto
+          ? (globalThis.crypto as Crypto).randomUUID()
+          : `timer-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+
+      await invoke("create_timer", {
+        id,
+        name: newTimerName,
+        targetMonitorIds: targets,
+        durationMs: targetEndTimestampMs != null ? 0 : durationMs,
+        scheduledStartTimestampMs,
+        targetEndTimestampMs,
+      });
+
+      setNewTimerName("");
+      setNewTimerDurationMinutes(0);
+      setNewTimerDurationSeconds(0);
+      setNewTimerScheduledTime("");
+      setNewTimerUseTargetEnd(false);
+      setNewTimerTargetEndDateTime("");
+      setNewTimerTargetMonitorIds(["ALL"]);
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setIsCreatingTimer(false);
+    }
+  };
+
+  const handleTimerAction = async (timerId: string, action: "start" | "pause" | "resume" | "stop") => {
+    try {
+      setError(null);
+      const command =
+        action === "start"
+          ? { kind: "start", timer_id: timerId }
+          : action === "pause"
+          ? { kind: "pause", timer_id: timerId }
+          : action === "resume"
+          ? { kind: "resume", timer_id: timerId }
+          : { kind: "stop", timer_id: timerId, cancelled: false };
+
+      await invoke("send_timer_command", { command });
+    } catch (err) {
+      setError(String(err));
+    }
+  };
+
+  const handleTimerDelete = async (timerId: string) => {
+    try {
+      setError(null);
+      await invoke("send_timer_command", {
+        command: { kind: "delete", timer_id: timerId },
+      });
+      if (editingTimerId === timerId) {
+        setEditingTimerId(null);
+        setEditingTimerName("");
+      }
+    } catch (err) {
+      setError(String(err));
+    }
+  };
+
+  const handleTimerUpdate = async (
+    timerId: string,
+    definition: TimerEntry["definition"]
+  ) => {
+    try {
+      setError(null);
+      await invoke("send_timer_command", {
+        command: { kind: "update", definition: { ...definition, id: timerId } },
+      });
+      setEditingTimerId(null);
+      setEditingTimerName("");
+    } catch (err) {
+      setError(String(err));
+    }
+  };
 
   const handleStartServer = async () => {
     try {
@@ -382,6 +913,22 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                   ⏹ サーバー停止
                 </button>
                 <button
+                  onClick={() => setShowTimerManagement(!showTimerManagement)}
+                  style={{
+                    padding: "0.5rem 1.5rem",
+                    fontSize: "1rem",
+                    fontWeight: "600",
+                    backgroundColor: showTimerManagement ? "#6b7280" : "#0ea5e9",
+                    color: "white",
+                    border: showTimerManagement ? "2px solid #0ea5e9" : "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  ⏱ タイマー管理
+                </button>
+                <button
                   onClick={() => setShowMonitorManagement(!showMonitorManagement)}
                   style={{
                     padding: "0.5rem 1.5rem",
@@ -401,6 +948,35 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
             </div>
           )}
         </div>
+
+        {/* Timer Summary Bar: always visible when there are running timers */}
+        {serverState.isRunning && runningTimers.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: "0.5rem",
+              padding: "0.5rem 0.75rem",
+              borderRadius: "8px",
+              border: "1px solid var(--card-border)",
+              backgroundColor: "var(--card-bg)",
+            }}
+          >
+            <span style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--text-color)", marginRight: "0.25rem" }}>
+              ⏱ 進行中:
+            </span>
+            {runningTimers.map((entry) => (
+              <TimerSummaryItem
+                key={entry.definition.id}
+                entry={entry}
+                formatDuration={formatDuration}
+                formatTimerStateLabel={formatTimerStateLabel}
+                onOpenPanel={() => setShowTimerManagement(true)}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Web接続情報 */}
         {serverState.isRunning && serverAddresses.length > 0 && (
@@ -647,6 +1223,457 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
             </p>
           </div>
         )}
+
+        {/* Timer Management Panel */}
+        {serverState.isRunning && showTimerManagement ? (
+          <div
+            style={{
+              border: "2px solid #0ea5e9",
+              padding: "1.5rem",
+              borderRadius: "8px",
+              backgroundColor: "var(--card-bg)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "1rem",
+              }}
+            >
+              <h3
+                style={{
+                  margin: 0,
+                  color: "#0ea5e9",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
+              >
+                ⏱ タイマー管理
+              </h3>
+              <button
+                onClick={() => setShowTimerManagement(false)}
+                style={{
+                  padding: "0.5rem 1rem",
+                  fontSize: "0.9rem",
+                  fontWeight: "600",
+                  backgroundColor: "#6b7280",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              >
+                ✕ 閉じる
+              </button>
+            </div>
+
+            {/* New Timer Form */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.75rem",
+                padding: "1rem",
+                backgroundColor: "var(--secondary-bg)",
+                borderRadius: "6px",
+                marginBottom: "1rem",
+              }}
+            >
+              <h4
+                style={{
+                  margin: 0,
+                  fontSize: "0.95rem",
+                  color: "var(--text-color)",
+                }}
+              >
+                ➕ 新しいタイマー
+              </h4>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <label
+                  style={{
+                    fontSize: "0.85rem",
+                    fontWeight: "600",
+                    color: "var(--text-color)",
+                  }}
+                >
+                  タイマー名
+                </label>
+                <input
+                  type="text"
+                  value={newTimerName}
+                  onChange={(e) => setNewTimerName(e.target.value)}
+                  placeholder="例: オープニング、コーナー1"
+                  style={{
+                    padding: "0.5rem",
+                    borderRadius: "4px",
+                    border: "1px solid var(--card-border)",
+                    backgroundColor: "var(--bg-color)",
+                    color: "var(--text-color)",
+                  }}
+                />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <label
+                  style={{
+                    fontSize: "0.85rem",
+                    fontWeight: "600",
+                    color: "var(--text-color)",
+                  }}
+                >
+                  タイマー種類
+                </label>
+                <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      cursor: "pointer",
+                      fontSize: "0.95rem",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="timer-mode"
+                      checked={!newTimerUseTargetEnd}
+                      onChange={() => setNewTimerUseTargetEnd(false)}
+                    />
+                    長さでカウントダウン
+                  </label>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      cursor: "pointer",
+                      fontSize: "0.95rem",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="timer-mode"
+                      checked={newTimerUseTargetEnd}
+                      onChange={() => setNewTimerUseTargetEnd(true)}
+                    />
+                    指定時刻までカウントダウン
+                  </label>
+                </div>
+              </div>
+              {newTimerUseTargetEnd ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                  <label
+                    style={{
+                      fontSize: "0.85rem",
+                      fontWeight: "600",
+                      color: "var(--text-color)",
+                    }}
+                  >
+                    終了時刻
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={newTimerTargetEndDateTime}
+                    onChange={(e) => setNewTimerTargetEndDateTime(e.target.value)}
+                    style={{
+                      padding: "0.5rem",
+                      borderRadius: "4px",
+                      border: "1px solid var(--card-border)",
+                      backgroundColor: "var(--bg-color)",
+                      color: "var(--text-color)",
+                      fontSize: "1rem",
+                    }}
+                  />
+                  <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--muted-text)" }}>
+                    この時刻になるまで残り時間がカウントダウンされます
+                  </p>
+                </div>
+              ) : (
+              <>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                <label
+                  style={{
+                    fontSize: "0.85rem",
+                    fontWeight: "600",
+                    color: "var(--text-color)",
+                  }}
+                >
+                  クイック設定
+                </label>
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                  {[
+                    [1, 0],
+                    [3, 0],
+                    [5, 0],
+                    [10, 0],
+                    [15, 0],
+                    [30, 0],
+                  ].map(([min, sec]) => (
+                    <button
+                      key={`${min}-${sec}`}
+                      type="button"
+                      onClick={() => {
+                        setNewTimerDurationMinutes(min);
+                        setNewTimerDurationSeconds(sec);
+                      }}
+                      style={{
+                        padding: "0.4rem 0.75rem",
+                        fontSize: "0.85rem",
+                        borderRadius: "4px",
+                        border: "1px solid var(--card-border)",
+                        backgroundColor: "var(--bg-color)",
+                        color: "var(--text-color)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {min}分
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                  <label
+                    style={{
+                      fontSize: "0.85rem",
+                      fontWeight: "600",
+                      color: "var(--text-color)",
+                    }}
+                  >
+                    長さ
+                  </label>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                    <input
+                      type="number"
+                      min={0}
+                      value={newTimerDurationMinutes}
+                      onChange={(e) =>
+                        setNewTimerDurationMinutes(parseInt(e.target.value || "0", 10))
+                      }
+                      style={{
+                        width: "70px",
+                        padding: "0.4rem",
+                        borderRadius: "4px",
+                        border: "1px solid var(--card-border)",
+                        backgroundColor: "var(--bg-color)",
+                        color: "var(--text-color)",
+                      }}
+                    />
+                    <span style={{ fontSize: "0.85rem" }}>分</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={59}
+                      value={newTimerDurationSeconds}
+                      onChange={(e) =>
+                        setNewTimerDurationSeconds(
+                          Math.min(59, parseInt(e.target.value || "0", 10))
+                        )
+                      }
+                      style={{
+                        width: "70px",
+                        padding: "0.4rem",
+                        borderRadius: "4px",
+                        border: "1px solid var(--card-border)",
+                        backgroundColor: "var(--bg-color)",
+                        color: "var(--text-color)",
+                      }}
+                    />
+                    <span style={{ fontSize: "0.85rem" }}>秒</span>
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                  <label
+                    style={{
+                      fontSize: "0.85rem",
+                      fontWeight: "600",
+                      color: "var(--text-color)",
+                    }}
+                  >
+                    自動開始時刻（任意）
+                  </label>
+                  <input
+                    type="time"
+                    value={newTimerScheduledTime}
+                    onChange={(e) => setNewTimerScheduledTime(e.target.value)}
+                    style={{
+                      padding: "0.4rem",
+                      borderRadius: "4px",
+                      border: "1px solid var(--card-border)",
+                      backgroundColor: "var(--bg-color)",
+                      color: "var(--text-color)",
+                    }}
+                  />
+                </div>
+              </div>
+              </>
+              )}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <label
+                  style={{
+                    fontSize: "0.85rem",
+                    fontWeight: "600",
+                    color: "var(--text-color)",
+                  }}
+                >
+                  対象モニター
+                </label>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      padding: "0.5rem",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      backgroundColor: newTimerTargetMonitorIds.includes("ALL")
+                        ? "var(--accent-color)"
+                        : "var(--secondary-bg)",
+                      color: newTimerTargetMonitorIds.includes("ALL")
+                        ? "white"
+                        : "var(--text-color)",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={newTimerTargetMonitorIds.includes("ALL")}
+                      onChange={() => toggleTimerTargetMonitorId("ALL")}
+                      style={{ cursor: "pointer" }}
+                    />
+                    すべて
+                  </label>
+                  {availableMonitors.map((monitor) => (
+                    <label
+                      key={monitor.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                        padding: "0.5rem",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        backgroundColor: newTimerTargetMonitorIds.includes(monitor.id)
+                          ? "var(--accent-color)"
+                          : "var(--secondary-bg)",
+                        color: newTimerTargetMonitorIds.includes(monitor.id)
+                          ? "white"
+                          : "var(--text-color)",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={newTimerTargetMonitorIds.includes(monitor.id)}
+                        onChange={() => toggleTimerTargetMonitorId(monitor.id)}
+                        style={{ cursor: "pointer" }}
+                      />
+                      {monitor.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={handleCreateTimer}
+                disabled={isCreatingTimer}
+                style={{
+                  padding: "0.75rem 1.5rem",
+                  fontSize: "1rem",
+                  fontWeight: "600",
+                  backgroundColor: isCreatingTimer ? "#9ca3af" : "#0ea5e9",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: isCreatingTimer ? "not-allowed" : "pointer",
+                  alignSelf: "flex-start",
+                }}
+              >
+                {isCreatingTimer ? "作成中..." : "➕ タイマーを追加"}
+              </button>
+            </div>
+
+            {/* Timer List */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.5rem",
+              }}
+            >
+              <h4
+                style={{
+                  margin: "0 0 0.5rem 0",
+                  fontSize: "0.95rem",
+                  color: "var(--text-color)",
+                }}
+              >
+                登録済みタイマー ({timers.length}個)
+              </h4>
+              <div
+                className="scrollable"
+                style={{
+                  maxHeight: "260px",
+                  overflowY: "auto",
+                  padding: "0.5rem",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.5rem",
+                }}
+              >
+                {timers.length === 0 ? (
+                  <div
+                    style={{
+                      padding: "1rem",
+                      textAlign: "center",
+                      color: "var(--muted-text)",
+                      fontStyle: "italic",
+                    }}
+                  >
+                    まだタイマーが登録されていません
+                  </div>
+                ) : (
+                  timers.map((entry) => (
+                    <TimerListRow
+                      key={entry.definition.id}
+                      entry={entry}
+                      formatDuration={formatDuration}
+                      formatTimerStateLabel={formatTimerStateLabel}
+                      onAction={handleTimerAction}
+                      onDelete={handleTimerDelete}
+                      isEditing={editingTimerId === entry.definition.id}
+                      editingName={editingTimerName}
+                      onEditingNameChange={setEditingTimerName}
+                      onSaveEdit={() =>
+                        editingTimerId &&
+                        handleTimerUpdate(editingTimerId, {
+                          ...entry.definition,
+                          name: editingTimerName.trim() || entry.definition.name,
+                        })
+                      }
+                      onCancelEdit={() => {
+                        setEditingTimerId(null);
+                        setEditingTimerName("");
+                      }}
+                      onStartEdit={(id, name) => {
+                        setEditingTimerId(id);
+                        setEditingTimerName(name);
+                      }}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {/* Monitor Management Panel */}
         {serverState.isRunning && showMonitorManagement ? (

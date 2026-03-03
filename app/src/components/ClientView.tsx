@@ -64,6 +64,20 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
     return map;
   }, [clientState.messages, availableMonitors]);
 
+  const timersSnapshot = clientState.timers;
+
+  // 自身の display_monitor_ids に紐づいたタイマーのみ表示（メイン画面は [] のため全タイマー）
+  const visibleTimers = useMemo(() => {
+    const entries = timersSnapshot?.timers ?? [];
+    if (entries.length === 0) return [];
+    const displayIds: string[] = [];
+    if (displayIds.length === 0) return entries;
+    return entries.filter((e) => {
+      const t = e.definition.target_monitor_ids ?? [];
+      return t.includes("ALL") || t.some((id) => displayIds.includes(id));
+    });
+  }, [timersSnapshot]);
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "urgent":
@@ -441,6 +455,115 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
                   </p>
                 </div>
               </>
+            )}
+
+            {/* タイマー: カンペの下・画面下中央にでっかく表示 */}
+            {clientState.isConnected && visibleTimers.length > 0 && (
+              <div
+                style={{
+                  marginTop: "2rem",
+                  width: "100%",
+                  maxWidth: "900px",
+                  marginLeft: "auto",
+                  marginRight: "auto",
+                  padding: "2rem",
+                  borderRadius: "16px",
+                  backgroundColor: "var(--card-bg)",
+                  border: "3px solid var(--card-border)",
+                  textAlign: "center",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "1.5rem",
+                    fontWeight: 700,
+                    color: "var(--text-color)",
+                    marginBottom: "1rem",
+                  }}
+                >
+                  ⏱ タイマー
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    justifyContent: "center",
+                    gap: "2rem",
+                  }}
+                >
+                  {visibleTimers.map((entry) => {
+                    const stateLabel =
+                      entry.runtime.state === "running"
+                        ? "▶ 進行中"
+                        : entry.runtime.state === "paused"
+                          ? "⏸ 一時停止"
+                          : entry.runtime.state === "completed"
+                            ? "✓ 完了"
+                            : entry.runtime.state === "cancelled"
+                              ? "✕ 中止"
+                              : "待機中";
+                    const totalSeconds = Math.max(
+                      0,
+                      Math.floor(entry.runtime.remaining_ms / 1000)
+                    );
+                    const hours = Math.floor(totalSeconds / 3600);
+                    const minutes = Math.floor((totalSeconds % 3600) / 60);
+                    const seconds = totalSeconds % 60;
+                    const pad = (n: number) => n.toString().padStart(2, "0");
+                    const timeStr =
+                      hours > 0
+                        ? `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+                        : `${pad(minutes)}:${pad(seconds)}`;
+                    return (
+                      <div
+                        key={entry.definition.id}
+                        style={{
+                          padding: "1.5rem 2rem",
+                          borderRadius: "16px",
+                          backgroundColor: "var(--secondary-bg)",
+                          border: "3px solid var(--card-border)",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          minWidth: "220px",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: "1.5rem",
+                            fontWeight: 700,
+                            color: "var(--text-color)",
+                          }}
+                        >
+                          {entry.definition.name}
+                        </span>
+                        <span
+                          style={{
+                            fontVariantNumeric: "tabular-nums",
+                            fontSize: "4rem",
+                            fontWeight: 800,
+                            color: "var(--accent-color)",
+                            lineHeight: 1.1,
+                            letterSpacing: "0.02em",
+                          }}
+                        >
+                          {timeStr}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "1.1rem",
+                            color: "var(--muted-text)",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {stateLabel}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
 
             <div style={{ marginTop: "0.5rem" }}>

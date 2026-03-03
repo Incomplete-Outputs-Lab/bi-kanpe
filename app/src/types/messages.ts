@@ -3,6 +3,8 @@
 export type Priority = "normal" | "high" | "urgent";
 export type FeedbackType = "ack" | "question" | "issue" | "info";
 
+export type TimerState = "pending" | "running" | "paused" | "completed" | "cancelled";
+
 export interface ClientHelloPayload {
   client_name: string;
   display_monitor_ids: string[];
@@ -32,6 +34,35 @@ export interface FlashCommandPayload {
 
 export interface ClearCommandPayload {
   target_monitor_ids: string[];
+}
+
+export interface TimerDefinition {
+  id: string;
+  name: string;
+  target_monitor_ids: string[];
+  duration_ms: number;
+  scheduled_start_timestamp_ms?: number | null;
+  /** 指定した終了時刻までカウントダウンする場合の Unix ミリ秒 */
+  target_end_timestamp_ms?: number | null;
+}
+
+export interface TimerRuntimeState {
+  id: string;
+  state: TimerState;
+  started_at_timestamp_ms?: number | null;
+  paused_at_timestamp_ms?: number | null;
+  remaining_ms: number;
+  last_updated_timestamp_ms: number;
+}
+
+export interface TimerEntry {
+  definition: TimerDefinition;
+  runtime: TimerRuntimeState;
+}
+
+export interface TimerStateSnapshot {
+  timestamp_ms: number;
+  timers: TimerEntry[];
 }
 
 export type Message =

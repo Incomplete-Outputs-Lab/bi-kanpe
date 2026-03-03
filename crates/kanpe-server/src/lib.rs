@@ -7,9 +7,11 @@ mod server;
 mod client_manager;
 mod broadcast;
 mod monitor_manager;
+mod timer_manager;
 
 pub use server::KanpeServer;
 pub use monitor_manager::MonitorManager;
+pub use timer_manager::TimerManager;
 
 // Re-export events for integration
 pub mod events {

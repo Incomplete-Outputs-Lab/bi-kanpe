@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import type { ConnectedClientInfo, Message, VirtualMonitor } from "../types/messages";
+import { invoke } from "@tauri-apps/api/core";
+import type {
+  ConnectedClientInfo,
+  Message,
+  VirtualMonitor,
+  TimerStateSnapshot,
+} from "../types/messages";
 
 export interface ServerState {
   isRunning: boolean;
@@ -9,6 +15,7 @@ export interface ServerState {
   feedbackMessages: Message[];
   sentMessages: Message[];
   monitors: VirtualMonitor[];
+  timers: TimerStateSnapshot | null;
 }
 
 export function useServerState() {
@@ -19,6 +26,7 @@ export function useServerState() {
     feedbackMessages: [],
     sentMessages: [],
     monitors: [],
+    timers: null,
   });
 
   useEffect(() => {
@@ -44,6 +52,7 @@ export function useServerState() {
         feedbackMessages: [],
         sentMessages: [],
         monitors: [],
+        timers: null,
       });
     });
 
@@ -141,6 +150,38 @@ export function useServerState() {
       });
     };
   }, []);
+
+  // Poll timer snapshot periodically while server is running
+  useEffect(() => {
+    if (!state.isRunning) {
+      setState((prev) => ({ ...prev, timers: null }));
+      return;
+    }
+
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const snapshot = await invoke<TimerStateSnapshot>("get_timer_snapshot");
+        if (!cancelled) {
+          setState((prev) => ({
+            ...prev,
+            timers: snapshot,
+          }));
+        }
+      } catch (err) {
+        console.error("Failed to get timer snapshot:", err);
+      }
+    };
+
+    // Initial fetch
+    poll();
+    const id = window.setInterval(poll, 1000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [state.isRunning]);
 
   return state;
 }
