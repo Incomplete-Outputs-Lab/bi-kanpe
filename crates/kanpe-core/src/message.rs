@@ -491,6 +491,7 @@ mod tests {
             target_monitor_ids: vec!["ALL".to_string()],
             duration_ms: 60_000,
             scheduled_start_timestamp_ms: None,
+            target_end_timestamp_ms: None,
         };
 
         let cmd = TimerCommandPayload {

@@ -66,6 +66,16 @@ export default function MonitorPopout({
       .slice(-1)[0];
   }, [clientState.messages, monitorId]);
 
+  // このモニターに紐づいたタイマーのみ表示
+  const visibleTimers = useMemo(() => {
+    const entries = clientState.timers?.timers ?? [];
+    if (entries.length === 0) return [];
+    return entries.filter((e) => {
+      const t = e.definition.target_monitor_ids ?? [];
+      return t.includes("ALL") || t.includes(monitorId);
+    });
+  }, [clientState.timers, monitorId]);
+
   // Auto-switch tabs based on message availability
   useEffect(() => {
     setActiveTab((prevTab) => {
@@ -151,14 +161,26 @@ export default function MonitorPopout({
     );
   }
 
+  const formatTimerStateLabel = (state: string) =>
+    state === "running"
+      ? "▶ 進行中"
+      : state === "paused"
+        ? "⏸ 一時停止"
+        : state === "completed"
+          ? "✓ 完了"
+          : state === "cancelled"
+            ? "✕ 中止"
+            : "待機中";
+
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", backgroundColor: "var(--bg-color)", color: "var(--text-color)" }}>
-      {/* Fullscreen Message Display */}
+      {/* カンペメッセージ（中央）＋ その下・画面下中央にタイマーでっかく */}
       <div
         className={isFlashing ? "flash-animation" : ""}
         style={{
           flex: 1,
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: currentMessage
@@ -170,6 +192,8 @@ export default function MonitorPopout({
           transition: "background-color 0.3s ease",
         }}
       >
+        {/* カンペメッセージエリア（中央） */}
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }}>
         {currentMessage && currentMessage.type === "kanpe_message" ? (
           <div
             style={{
@@ -221,6 +245,71 @@ export default function MonitorPopout({
             <p style={{ fontSize: "1.1rem", margin: 0, color: "#22c55e" }}>
               ● {monitorName}
             </p>
+          </div>
+        )}
+        </div>
+
+        {/* タイマー: カンペの下・画面下中央にでっかく表示 */}
+        {visibleTimers.length > 0 && (
+          <div
+            style={{
+              flexShrink: 0,
+              width: "100%",
+              padding: "2rem 1.5rem",
+              textAlign: "center",
+            }}
+          >
+            <div
+              style={{
+                display: "inline-flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "0.5rem",
+                padding: "2rem 3rem",
+                borderRadius: "20px",
+                backgroundColor: "var(--card-bg)",
+                border: "4px solid var(--card-border)",
+                boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
+              }}
+            >
+              <span style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-color)" }}>
+                ⏱ {visibleTimers.length > 1 ? "タイマー" : visibleTimers[0].definition.name}
+              </span>
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "2rem" }}>
+                {visibleTimers.map((entry) => {
+                  const totalSeconds = Math.max(0, Math.floor(entry.runtime.remaining_ms / 1000));
+                  const hours = Math.floor(totalSeconds / 3600);
+                  const minutes = Math.floor((totalSeconds % 3600) / 60);
+                  const seconds = totalSeconds % 60;
+                  const pad = (n: number) => n.toString().padStart(2, "0");
+                  const timeStr = hours > 0 ? `${pad(hours)}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`;
+                  return (
+                    <div key={entry.definition.id} style={{ textAlign: "center" }}>
+                      {visibleTimers.length > 1 && (
+                        <div style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "0.25rem", color: "var(--text-color)" }}>
+                          {entry.definition.name}
+                        </div>
+                      )}
+                      <div
+                        style={{
+                          fontVariantNumeric: "tabular-nums",
+                          fontSize: "5rem",
+                          fontWeight: 800,
+                          color: "var(--accent-color)",
+                          lineHeight: 1.1,
+                          letterSpacing: "0.02em",
+                        }}
+                      >
+                        {timeStr}
+                      </div>
+                      <div style={{ fontSize: "1.1rem", color: "var(--muted-text)", fontWeight: 600 }}>
+                        {formatTimerStateLabel(entry.runtime.state)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
 

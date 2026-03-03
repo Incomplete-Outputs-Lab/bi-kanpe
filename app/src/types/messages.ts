@@ -42,6 +42,8 @@ export interface TimerDefinition {
   target_monitor_ids: string[];
   duration_ms: number;
   scheduled_start_timestamp_ms?: number | null;
+  /** 指定した終了時刻までカウントダウンする場合の Unix ミリ秒 */
+  target_end_timestamp_ms?: number | null;
 }
 
 export interface TimerRuntimeState {

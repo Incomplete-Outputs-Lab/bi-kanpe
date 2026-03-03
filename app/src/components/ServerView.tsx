@@ -63,6 +63,8 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
   const [newTimerDurationMinutes, setNewTimerDurationMinutes] = useState<number>(0);
   const [newTimerDurationSeconds, setNewTimerDurationSeconds] = useState<number>(0);
   const [newTimerScheduledTime, setNewTimerScheduledTime] = useState<string>("");
+  const [newTimerUseTargetEnd, setNewTimerUseTargetEnd] = useState<boolean>(false);
+  const [newTimerTargetEndDateTime, setNewTimerTargetEndDateTime] = useState<string>("");
   const [newTimerTargetMonitorIds, setNewTimerTargetMonitorIds] = useState<string[]>(["ALL"]);
   const [isCreatingTimer, setIsCreatingTimer] = useState<boolean>(false);
 
@@ -194,8 +196,16 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
     const durationMs =
       Math.max(0, newTimerDurationMinutes) * 60_000 +
       Math.max(0, newTimerDurationSeconds) * 1_000;
-    if (durationMs <= 0) {
-      setError("タイマーの長さを1秒以上にしてください");
+    let targetEndTimestampMs: number | null = null;
+    if (newTimerUseTargetEnd && newTimerTargetEndDateTime) {
+      const t = new Date(newTimerTargetEndDateTime).getTime();
+      if (Number.isNaN(t)) {
+        setError("終了時刻を正しく入力してください");
+        return;
+      }
+      targetEndTimestampMs = t;
+    } else if (durationMs <= 0) {
+      setError("タイマーの長さを1秒以上にしてくださいか、または「指定時刻までカウントダウン」で終了時刻を指定してください");
       return;
     }
 
@@ -232,14 +242,17 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
         id,
         name: newTimerName,
         targetMonitorIds: targets,
-        durationMs: durationMs,
+        durationMs: targetEndTimestampMs != null ? 0 : durationMs,
         scheduledStartTimestampMs,
+        targetEndTimestampMs,
       });
 
       setNewTimerName("");
       setNewTimerDurationMinutes(0);
       setNewTimerDurationSeconds(0);
       setNewTimerScheduledTime("");
+      setNewTimerUseTargetEnd(false);
+      setNewTimerTargetEndDateTime("");
       setNewTimerTargetMonitorIds(["ALL"]);
     } catch (err) {
       setError(String(err));
@@ -891,6 +904,82 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                   }}
                 />
               </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <label
+                  style={{
+                    fontSize: "0.85rem",
+                    fontWeight: "600",
+                    color: "var(--text-color)",
+                  }}
+                >
+                  タイマー種類
+                </label>
+                <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      cursor: "pointer",
+                      fontSize: "0.95rem",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="timer-mode"
+                      checked={!newTimerUseTargetEnd}
+                      onChange={() => setNewTimerUseTargetEnd(false)}
+                    />
+                    長さでカウントダウン
+                  </label>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      cursor: "pointer",
+                      fontSize: "0.95rem",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="timer-mode"
+                      checked={newTimerUseTargetEnd}
+                      onChange={() => setNewTimerUseTargetEnd(true)}
+                    />
+                    指定時刻までカウントダウン
+                  </label>
+                </div>
+              </div>
+              {newTimerUseTargetEnd ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                  <label
+                    style={{
+                      fontSize: "0.85rem",
+                      fontWeight: "600",
+                      color: "var(--text-color)",
+                    }}
+                  >
+                    終了時刻
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={newTimerTargetEndDateTime}
+                    onChange={(e) => setNewTimerTargetEndDateTime(e.target.value)}
+                    style={{
+                      padding: "0.5rem",
+                      borderRadius: "4px",
+                      border: "1px solid var(--card-border)",
+                      backgroundColor: "var(--bg-color)",
+                      color: "var(--text-color)",
+                      fontSize: "1rem",
+                    }}
+                  />
+                  <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--muted-text)" }}>
+                    この時刻になるまで残り時間がカウントダウンされます
+                  </p>
+                </div>
+              ) : (
               <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                   <label
@@ -966,6 +1055,7 @@ export function ServerView({ onBackToMenu }: ServerViewProps) {
                   />
                 </div>
               </div>
+              )}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 <label

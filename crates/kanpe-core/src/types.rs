@@ -81,10 +81,13 @@ pub struct TimerDefinition {
     pub name: String,
     /// Target virtual monitor IDs this timer is relevant for (e.g., ["A", "B"] or ["ALL"])
     pub target_monitor_ids: Vec<String>,
-    /// Total duration of the timer in milliseconds
+    /// Total duration of the timer in milliseconds (used when target_end_timestamp_ms is None)
     pub duration_ms: u64,
     /// Optional scheduled start time (Unix timestamp in milliseconds, server clock)
     pub scheduled_start_timestamp_ms: Option<i64>,
+    /// Optional target end time: count down until this moment (Unix timestamp in milliseconds, server clock).
+    /// When set, remaining_ms is computed as max(0, target_end_timestamp_ms - now) instead of duration-based countdown.
+    pub target_end_timestamp_ms: Option<i64>,
 }
 
 /// Runtime state for a timer

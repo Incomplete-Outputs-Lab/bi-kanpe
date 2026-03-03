@@ -49,12 +49,23 @@ impl TimerManager {
                     return Err(format!("Timer with id {} already exists", definition.id));
                 }
 
+                let (initial_remaining, state) = if let Some(target_end) = definition.target_end_timestamp_ms {
+                    let remaining = (target_end - now_ms).max(0) as u64;
+                    if remaining == 0 {
+                        (0u64, TimerState::Completed)
+                    } else {
+                        (remaining, TimerState::Pending)
+                    }
+                } else {
+                    (definition.duration_ms, TimerState::Pending)
+                };
+
                 let runtime = TimerRuntimeState {
                     id: definition.id.clone(),
-                    state: TimerState::Pending,
+                    state,
                     started_at_timestamp_ms: None,
                     paused_at_timestamp_ms: None,
-                    remaining_ms: definition.duration_ms,
+                    remaining_ms: initial_remaining,
                     last_updated_timestamp_ms: now_ms,
                 };
 
@@ -67,9 +78,14 @@ impl TimerManager {
             TimerCommandKind::Update { definition } => {
                 let id = definition.id.clone();
                 if let Some(info) = timers.get_mut(&id) {
-                    info.definition = definition;
-                    // Clamp remaining time to new duration if necessary
-                    if info.runtime.remaining_ms > info.definition.duration_ms {
+                    info.definition = definition.clone();
+                    if let Some(target_end) = definition.target_end_timestamp_ms {
+                        let remaining = (target_end - now_ms).max(0) as u64;
+                        info.runtime.remaining_ms = remaining;
+                        if remaining == 0 && info.runtime.state == TimerState::Running {
+                            info.runtime.state = TimerState::Completed;
+                        }
+                    } else if info.runtime.remaining_ms > info.definition.duration_ms {
                         info.runtime.remaining_ms = info.definition.duration_ms;
                     }
                     Ok(())
@@ -120,20 +136,35 @@ impl TimerManager {
                     }
                 }
                 TimerState::Running => {
-                    let elapsed = now_ms.saturating_sub(info.runtime.last_updated_timestamp_ms);
-                    if elapsed > 0 {
-                        let elapsed_u64 = elapsed as u64;
-                        if elapsed_u64 >= info.runtime.remaining_ms {
-                            info.runtime.remaining_ms = 0;
+                    if let Some(target_end) = info.definition.target_end_timestamp_ms {
+                        let remaining = (target_end - now_ms).max(0) as u64;
+                        let prev = info.runtime.remaining_ms;
+                        info.runtime.remaining_ms = remaining;
+                        info.runtime.last_updated_timestamp_ms = now_ms;
+                        if remaining == 0 {
                             info.runtime.state = TimerState::Completed;
                             info.runtime.started_at_timestamp_ms = None;
                             info.runtime.paused_at_timestamp_ms = None;
-                            info.runtime.last_updated_timestamp_ms = now_ms;
-                        } else {
-                            info.runtime.remaining_ms -= elapsed_u64;
-                            info.runtime.last_updated_timestamp_ms = now_ms;
                         }
-                        changed = true;
+                        if prev != remaining {
+                            changed = true;
+                        }
+                    } else {
+                        let elapsed = now_ms.saturating_sub(info.runtime.last_updated_timestamp_ms);
+                        if elapsed > 0 {
+                            let elapsed_u64 = elapsed as u64;
+                            if elapsed_u64 >= info.runtime.remaining_ms {
+                                info.runtime.remaining_ms = 0;
+                                info.runtime.state = TimerState::Completed;
+                                info.runtime.started_at_timestamp_ms = None;
+                                info.runtime.paused_at_timestamp_ms = None;
+                                info.runtime.last_updated_timestamp_ms = now_ms;
+                            } else {
+                                info.runtime.remaining_ms -= elapsed_u64;
+                                info.runtime.last_updated_timestamp_ms = now_ms;
+                            }
+                            changed = true;
+                        }
                     }
                 }
                 TimerState::Paused | TimerState::Completed | TimerState::Cancelled => {
@@ -186,9 +217,12 @@ impl TimerManager {
 
         match info.runtime.state {
             TimerState::Pending | TimerState::Paused | TimerState::Completed | TimerState::Cancelled => {
-                // Start (or restart) from current remaining_ms; if 0, reset to full duration
                 if info.runtime.remaining_ms == 0 {
-                    info.runtime.remaining_ms = info.definition.duration_ms;
+                    if let Some(target_end) = info.definition.target_end_timestamp_ms {
+                        info.runtime.remaining_ms = (target_end - now_ms).max(0) as u64;
+                    } else {
+                        info.runtime.remaining_ms = info.definition.duration_ms;
+                    }
                 }
                 info.runtime.state = TimerState::Running;
                 info.runtime.started_at_timestamp_ms = Some(now_ms);
@@ -240,7 +274,11 @@ impl TimerManager {
 
         if let TimerState::Paused = info.runtime.state {
             if info.runtime.remaining_ms == 0 {
-                info.runtime.remaining_ms = info.definition.duration_ms;
+                if let Some(target_end) = info.definition.target_end_timestamp_ms {
+                    info.runtime.remaining_ms = (target_end - now_ms).max(0) as u64;
+                } else {
+                    info.runtime.remaining_ms = info.definition.duration_ms;
+                }
             }
             info.runtime.state = TimerState::Running;
             info.runtime.started_at_timestamp_ms = Some(now_ms);

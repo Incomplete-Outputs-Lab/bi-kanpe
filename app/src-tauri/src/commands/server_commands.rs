@@ -243,7 +243,8 @@ pub async fn send_timer_command(
         .await
 }
 
-/// Convenience command to create a new timer from primitive fields
+/// Convenience command to create a new timer from primitive fields.
+/// Either duration_ms > 0 (countdown from duration) or target_end_timestamp_ms (countdown to specified time) can be used.
 #[tauri::command]
 pub async fn create_timer(
     id: String,
@@ -251,6 +252,7 @@ pub async fn create_timer(
     target_monitor_ids: Vec<String>,
     duration_ms: u64,
     scheduled_start_timestamp_ms: Option<i64>,
+    target_end_timestamp_ms: Option<i64>,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let server = state.server.read().await;
@@ -262,6 +264,7 @@ pub async fn create_timer(
         target_monitor_ids,
         duration_ms,
         scheduled_start_timestamp_ms,
+        target_end_timestamp_ms,
     };
 
     let payload = TimerCommandPayload {
