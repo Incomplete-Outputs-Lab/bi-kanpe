@@ -103,6 +103,9 @@ pub async fn connect_to_server(
                         serde_json::json!({ "target_monitor_ids": target_monitor_ids }),
                     );
                 }
+                ClientEvent::TimerStateUpdated { snapshot } => {
+                    let _ = app_handle.emit("timer_state_update", snapshot);
+                }
             }
         }
     });

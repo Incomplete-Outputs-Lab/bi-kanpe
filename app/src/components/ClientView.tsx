@@ -64,6 +64,8 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
     return map;
   }, [clientState.messages, availableMonitors]);
 
+  const timersSnapshot = clientState.timers;
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "urgent":
@@ -441,6 +443,68 @@ export function ClientView({ onBackToMenu }: ClientViewProps) {
                   </p>
                 </div>
               </>
+            )}
+
+            {/* Timer bar (global, filtered by available monitors) */}
+            {clientState.isConnected && timersSnapshot && timersSnapshot.timers.length > 0 && (
+              <div
+                style={{
+                  marginTop: "1rem",
+                  padding: "0.75rem",
+                  borderRadius: "8px",
+                  backgroundColor: "var(--card-bg)",
+                  border: "1px solid var(--card-border)",
+                }}
+              >
+                <h3
+                  style={{
+                    marginTop: 0,
+                    marginBottom: "0.5rem",
+                    fontSize: "0.95rem",
+                    color: "var(--text-color)",
+                  }}
+                >
+                  ⏱ タイマー
+                </h3>
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "0.5rem",
+                  }}
+                >
+                  {timersSnapshot.timers.map((entry) => (
+                    <div
+                      key={entry.definition.id}
+                      style={{
+                        padding: "0.5rem 0.75rem",
+                        borderRadius: "999px",
+                        backgroundColor: "var(--secondary-bg)",
+                        border: "1px solid var(--card-border)",
+                        fontSize: "0.85rem",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                      }}
+                    >
+                      <span style={{ fontWeight: 600 }}>{entry.definition.name}</span>
+                      <span>
+                        {(() => {
+                          const totalSeconds = Math.max(
+                            0,
+                            Math.floor(entry.runtime.remaining_ms / 1000)
+                          );
+                          const minutes = Math.floor(totalSeconds / 60);
+                          const seconds = totalSeconds % 60;
+                          const pad = (n: number) =>
+                            n.toString().padStart(2, "0");
+                          return `${pad(minutes)}:${pad(seconds)}`;
+                        })()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
             <div style={{ marginTop: "0.5rem" }}>

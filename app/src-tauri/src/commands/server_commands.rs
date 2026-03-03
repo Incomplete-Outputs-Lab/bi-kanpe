@@ -2,7 +2,7 @@
 
 use crate::config::ConnectedClientInfo;
 use crate::state::{AppMode, AppState};
-use kanpe_core::{Message, Priority};
+use kanpe_core::{Message, Priority, TimerCommandKind, TimerCommandPayload, TimerDefinition};
 use kanpe_core::types::VirtualMonitor;
 use kanpe_server::events::ServerEvent;
 use kanpe_server::KanpeServer;
@@ -227,6 +227,61 @@ pub async fn get_virtual_monitors(state: State<'_, AppState>) -> Result<Vec<Virt
     let server = server.as_ref().ok_or("Server not running")?;
 
     Ok(server.get_monitors().await)
+}
+
+/// Create or update/delete/control timers on the server
+#[tauri::command]
+pub async fn send_timer_command(
+    command: TimerCommandKind,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let server = state.server.read().await;
+    let server = server.as_ref().ok_or("Server not running")?;
+
+    server
+        .apply_timer_command(command)
+        .await
+}
+
+/// Convenience command to create a new timer from primitive fields
+#[tauri::command]
+pub async fn create_timer(
+    id: String,
+    name: String,
+    target_monitor_ids: Vec<String>,
+    duration_ms: u64,
+    scheduled_start_timestamp_ms: Option<i64>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let server = state.server.read().await;
+    let server = server.as_ref().ok_or("Server not running")?;
+
+    let definition = TimerDefinition {
+        id,
+        name,
+        target_monitor_ids,
+        duration_ms,
+        scheduled_start_timestamp_ms,
+    };
+
+    let payload = TimerCommandPayload {
+        command: TimerCommandKind::Create { definition },
+    };
+
+    server
+        .apply_timer_command(payload.command)
+        .await
+}
+
+/// Get current timer snapshot
+#[tauri::command]
+pub async fn get_timer_snapshot(
+    state: State<'_, AppState>,
+) -> Result<kanpe_core::TimerStateSnapshot, String> {
+    let server = state.server.read().await;
+    let server = server.as_ref().ok_or("Server not running")?;
+
+    Ok(server.get_timer_snapshot().await)
 }
 
 /// Send a flash command to clients

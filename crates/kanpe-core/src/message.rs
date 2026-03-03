@@ -1,7 +1,15 @@
 //! Message types for the Kanpe protocol
 
 use serde::{Deserialize, Serialize};
-use crate::types::{new_id, timestamp, Priority, FeedbackType, VirtualMonitor};
+use crate::types::{
+    new_id,
+    timestamp,
+    Priority,
+    FeedbackType,
+    VirtualMonitor,
+    TimerCommandPayload,
+    TimerStateSnapshot,
+};
 
 /// Main message enum for all Kanpe protocol messages
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -76,6 +84,18 @@ pub enum Message {
         id: String,
         timestamp: i64,
         payload: ClearCommandPayload,
+    },
+    /// Director issues timer-related command to server
+    TimerCommand {
+        id: String,
+        timestamp: i64,
+        payload: TimerCommandPayload,
+    },
+    /// Server broadcasts timer state snapshot to clients
+    TimerStateUpdate {
+        id: String,
+        timestamp: i64,
+        payload: TimerStateSnapshot,
     },
 }
 
@@ -294,6 +314,24 @@ impl Message {
         }
     }
 
+    /// Create a new TimerCommand message
+    pub fn timer_command(payload: TimerCommandPayload) -> Self {
+        Message::TimerCommand {
+            id: new_id(),
+            timestamp: timestamp(),
+            payload,
+        }
+    }
+
+    /// Create a new TimerStateUpdate message
+    pub fn timer_state_update(snapshot: TimerStateSnapshot) -> Self {
+        Message::TimerStateUpdate {
+            id: new_id(),
+            timestamp: timestamp(),
+            payload: snapshot,
+        }
+    }
+
     /// Get the message ID
     pub fn id(&self) -> &str {
         match self {
@@ -309,6 +347,8 @@ impl Message {
             Message::MonitorUpdated { id, .. } => id,
             Message::FlashCommand { id, .. } => id,
             Message::ClearCommand { id, .. } => id,
+            Message::TimerCommand { id, .. } => id,
+            Message::TimerStateUpdate { id, .. } => id,
         }
     }
 
@@ -327,6 +367,8 @@ impl Message {
             Message::MonitorUpdated { timestamp, .. } => *timestamp,
             Message::FlashCommand { timestamp, .. } => *timestamp,
             Message::ClearCommand { timestamp, .. } => *timestamp,
+            Message::TimerCommand { timestamp, .. } => *timestamp,
+            Message::TimerStateUpdate { timestamp, .. } => *timestamp,
         }
     }
 }
@@ -429,5 +471,59 @@ mod tests {
         let json = serde_json::to_string(&msg).unwrap();
         assert!(json.contains("\"type\":\"clear_command\""));
         assert!(json.contains("\"target_monitor_ids\":[\"ALL\"]"));
+    }
+
+    #[test]
+    fn test_timer_command_and_state_update_serialization() {
+        use crate::types::{
+            TimerCommandKind,
+            TimerCommandPayload,
+            TimerDefinition,
+            TimerRuntimeState,
+            TimerState,
+            TimerEntry,
+            TimerStateSnapshot,
+        };
+
+        let definition = TimerDefinition {
+            id: "timer-1".to_string(),
+            name: "Test Timer".to_string(),
+            target_monitor_ids: vec!["ALL".to_string()],
+            duration_ms: 60_000,
+            scheduled_start_timestamp_ms: None,
+        };
+
+        let cmd = TimerCommandPayload {
+            command: TimerCommandKind::Create { definition: definition.clone() },
+        };
+
+        let msg = Message::timer_command(cmd);
+        let json = serde_json::to_string(&msg).unwrap();
+        assert!(json.contains("\"type\":\"timer_command\""));
+        assert!(json.contains("\"kind\":\"create\""));
+
+        let runtime = TimerRuntimeState {
+            id: definition.id.clone(),
+            state: TimerState::Pending,
+            started_at_timestamp_ms: None,
+            paused_at_timestamp_ms: None,
+            remaining_ms: definition.duration_ms,
+            last_updated_timestamp_ms: timestamp(),
+        };
+
+        let entry = TimerEntry {
+            definition,
+            runtime,
+        };
+
+        let snapshot = TimerStateSnapshot {
+            timestamp_ms: timestamp(),
+            timers: vec![entry],
+        };
+
+        let update_msg = Message::timer_state_update(snapshot);
+        let json = serde_json::to_string(&update_msg).unwrap();
+        assert!(json.contains("\"type\":\"timer_state_update\""));
+        assert!(json.contains("\"timers\""));
     }
 }

@@ -48,6 +48,9 @@ pub fn run() {
             commands::get_virtual_monitors,
             commands::send_flash_command,
             commands::send_clear_command,
+            commands::send_timer_command,
+            commands::create_timer,
+            commands::get_timer_snapshot,
             // Client commands
             commands::connect_to_server,
             commands::disconnect_from_server,

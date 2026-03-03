@@ -43,5 +43,8 @@ pub mod events {
         ClearReceived {
             target_monitor_ids: Vec<String>,
         },
+        TimerStateUpdated {
+            snapshot: kanpe_core::TimerStateSnapshot,
+        },
     }
 }

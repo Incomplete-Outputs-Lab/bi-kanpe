@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import type { Message, VirtualMonitor } from "../types/messages";
+import type { Message, VirtualMonitor, TimerStateSnapshot } from "../types/messages";
 
 export interface ClientState {
   isConnected: boolean;
@@ -12,6 +12,7 @@ export interface ClientState {
   flashTrigger: number;
   clearTrigger: number;
   disconnectReason: string | null;
+  timers: TimerStateSnapshot | null;
 }
 
 export function useClientState(displayMonitorIds: string[] = []) {
@@ -28,6 +29,7 @@ export function useClientState(displayMonitorIds: string[] = []) {
     flashTrigger: 0,
     clearTrigger: 0,
     disconnectReason: null,
+    timers: null,
   });
 
   // Check initial connection status (important for popout windows)
@@ -201,6 +203,17 @@ export function useClientState(displayMonitorIds: string[] = []) {
       }
     );
 
+    // Listen for timer_state_update event
+    const unlistenTimerState = listen<TimerStateSnapshot>(
+      "timer_state_update",
+      (event) => {
+        setState((prev) => ({
+          ...prev,
+          timers: event.payload,
+        }));
+      }
+    );
+
     // Cleanup listeners on unmount (parallel for optimal performance)
     return () => {
       Promise.all([
@@ -214,6 +227,7 @@ export function useClientState(displayMonitorIds: string[] = []) {
         unlistenMonitorUpdated,
         unlistenFlash,
         unlistenClear,
+        unlistenTimerState,
       ]).then((unlisteners) => {
         unlisteners.forEach((fn) => fn());
       });
